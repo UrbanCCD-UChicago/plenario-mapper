@@ -11,7 +11,7 @@ var _ = require('underscore');
 exports.misfit_query_text = function (test) {
     var obs = {
         node_id: "00A",
-        node_config: "011ab78",
+        meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "HTU21D",
         data: {
@@ -21,7 +21,7 @@ exports.misfit_query_text = function (test) {
     };
 
     test.equal(mapper.misfit_query_text(obs), "INSERT INTO unknown_feature " +
-        "VALUES ('00A', '2016-08-05T00:00:08.246000', '011ab78', 'HTU21D', '{\"Temp\":37.91,\"Humidity\":27.48}');");
+        "VALUES ('00A', '2016-08-05T00:00:08.246000', 23, 'HTU21D', '{\"Temp\":37.91,\"Humidity\":27.48}');");
     test.done();
 };
 
@@ -29,7 +29,7 @@ exports.misfit_query_text = function (test) {
 exports.feature_query_text = function (test) {
     var obs1 = {
         node_id: "00A",
-        node_config: "011ab78",
+        meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "HTU21D",
         data: {
@@ -39,7 +39,7 @@ exports.feature_query_text = function (test) {
     };
     var obs2 = {
         node_id: "00A",
-        node_config: "011ab78",
+        meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "HMC5883L",
         data: {
@@ -61,14 +61,14 @@ exports.feature_query_text = function (test) {
     };
 
     test.equal(mapper.feature_query_text(obs1, map, 'temperature'), "INSERT INTO temperature " +
-        "(node_id, datetime, node_config, sensor, temperature) " +
-        "VALUES ('00A', '2016-08-05T00:00:08.246000', '011ab78', 'HTU21D', 37.91);");
+        "(node_id, datetime, meta_id, sensor, temperature) " +
+        "VALUES ('00A', '2016-08-05T00:00:08.246000', 23, 'HTU21D', 37.91);");
     test.equal(mapper.feature_query_text(obs1, map, 'relative_humidity'), "INSERT INTO relative_humidity " +
-        "(node_id, datetime, node_config, sensor, humidity) " +
-        "VALUES ('00A', '2016-08-05T00:00:08.246000', '011ab78', 'HTU21D', 27.48);");
+        "(node_id, datetime, meta_id, sensor, humidity) " +
+        "VALUES ('00A', '2016-08-05T00:00:08.246000', 23, 'HTU21D', 27.48);");
     test.equal(mapper.feature_query_text(obs2, map, 'magnetic_field'), "INSERT INTO magnetic_field " +
-        "(node_id, datetime, node_config, sensor, x, y, z) " +
-        "VALUES ('00A', '2016-08-05T00:00:08.246000', '011ab78', 'HMC5883L', 56.77, 32.11, 90.92);");
+        "(node_id, datetime, meta_id, sensor, x, y, z) " +
+        "VALUES ('00A', '2016-08-05T00:00:08.246000', 23, 'HMC5883L', 56.77, 32.11, 90.92);");
     test.done();
 };
 
@@ -76,7 +76,7 @@ exports.feature_query_text = function (test) {
 exports.format_obs = function (test) {
     var obs1 = {
         node_id: "00A",
-        node_config: "011ab78",
+        meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "HTU21D",
         data: {
@@ -86,7 +86,7 @@ exports.format_obs = function (test) {
     };
     var obs2 = {
         node_id: "00A",
-        node_config: "011ab78",
+        meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "HMC5883L",
         data: {

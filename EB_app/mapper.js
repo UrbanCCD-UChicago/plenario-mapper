@@ -46,7 +46,7 @@ var update_map = function (pg_pool) {
  * @param {Object} obs = observation
  * in format:
  * { node_id: "00A",
- *  node_config: "011ab78",
+ *  meta_id: 23,
  *  datetime: "2016-08-05T00:00:08.246000",
  *  sensor: "HTU21D",
  *  data: { temperature: 37.90,
@@ -116,7 +116,7 @@ var parse_insert_emit = function (obs, map, pg_pool, rs_pool, socket, blacklist)
  * @param {Object} obs = observation
  * in format:
  * { node_id: "00A",
- *  node_config: "011ab78",
+ *  meta_id: 23,
  *  datetime: "2016-08-05T00:00:08.246000",
  *  sensor: "HTU21D",
  *  data: { temperature: 37.90,
@@ -128,7 +128,7 @@ var parse_insert_emit = function (obs, map, pg_pool, rs_pool, socket, blacklist)
  */
 function redshift_insert(obs, map, rs_pool, misfit) {
     // works off (node_id, datetime, sensor, {values}, procedures) database model for now
-    // if node_config format is accepted, change this
+    // if meta_id format is accepted, change this
     rs_pool.connect(function (err, rs_client, done) {
         if (err) {
             log.error('error connecting client in redshift_insert ', err)
@@ -170,8 +170,8 @@ function redshift_insert(obs, map, rs_pool, misfit) {
  */
 var misfit_query_text = function (obs) {
     return util.format("INSERT INTO unknown_feature " +
-        "VALUES ('%s', '%s', '%s', '%s', '%s');",
-        obs.node_id, obs.datetime, obs.node_config, obs.sensor, JSON.stringify(obs.data));
+        "VALUES ('%s', '%s', %s, '%s', '%s');",
+        obs.node_id, obs.datetime, obs.meta_id, obs.sensor, JSON.stringify(obs.data));
 };
 
 /**
@@ -183,7 +183,7 @@ var misfit_query_text = function (obs) {
  * @return {String} query_text
  */
 var feature_query_text = function(obs, map, feature) {
-    var query_text = util.format("INSERT INTO %s (node_id, datetime, node_config, sensor, ", feature.toLowerCase());
+    var query_text = util.format("INSERT INTO %s (node_id, datetime, meta_id, sensor, ", feature.toLowerCase());
     var c = 0;
     Object.keys(map[obs.sensor]).forEach(function(key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
@@ -195,7 +195,7 @@ var feature_query_text = function(obs, map, feature) {
         }
     });
     query_text = util.format(query_text + ") " +
-        "VALUES ('%s', '%s', '%s', '%s'", obs.node_id, obs.datetime, obs.node_config, obs.sensor);
+        "VALUES ('%s', '%s', %s, '%s'", obs.node_id, obs.datetime, obs.meta_id, obs.sensor);
     Object.keys(map[obs.sensor]).forEach(function(key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
             query_text += ', ' + obs.data[key];
@@ -211,7 +211,7 @@ var feature_query_text = function(obs, map, feature) {
  * @param {Object} obs = observation
  * in format:
  * { node_id: "00A",
- *  node_config: "011ab78",
+ *  meta_id: 23,
  *  datetime: "2016-08-05T00:00:08.246000",
  *  sensor: "HTU21D",
  *  data: { temperature: 37.90,
