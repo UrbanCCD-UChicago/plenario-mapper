@@ -64,8 +64,8 @@ function recordProcessor() {
                 data = new Buffer(record.data, 'base64').toString();
                 sequenceNumber = record.sequenceNumber;
                 partitionKey = record.partitionKey;
-                // assumes a string is being read from the stream
-                log.info('running parse_insert_emit');
+                // assumes a stringified JSON is being read from the stream
+                // will catch and log malformed JSON
                 try {
                     if (mapper.parse_insert_emit(JSON.parse(data), map, pg_pool, rs_pool, socket, blacklist) == true) {
                         mapper.update_map(pg_pool).then(function (new_map) {
