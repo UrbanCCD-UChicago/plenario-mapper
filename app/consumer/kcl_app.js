@@ -3,14 +3,10 @@
 // satisfies Promise needs of pg-pool running underneath pg
 global.Promise = require('promise');
 
-var fs = require('fs');
 var util = require('util');
-var pg = require('pg');
 var kcl = require('../');
 var logger = require('../util/logger');
 var mapper = require('../mapper');
-// array of all sensor names whose metadata appears to be incorrect
-var blacklist = [];
 
 /**
  * Be careful not to use the 'stderr'/'stdout'/'console' as log destination since it is used to communicate with the
@@ -20,28 +16,6 @@ var blacklist = [];
 function recordProcessor() {
     var log = logger().getLogger('recordProcessor');
     var shardId;
-    var socket = require('socket.io-client')('http://streaming.plenar.io/', {reconnect: true, query: 'consumer_token='+process.env.CONSUMER_TOKEN});
-    var pg_config = {
-        user: process.env.DB_USER,
-        database: process.env.DB_NAME,
-        password: process.env.DB_PASSWORD,
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        max: 10,
-        idleTimeoutMillis: 30000
-    };
-    var rs_config = {
-        user: process.env.RS_USER,
-        database: process.env.RS_NAME,
-        password: process.env.RS_PASSWORD,
-        host: process.env.RS_HOST,
-        port: process.env.RS_PORT,
-        max: 10,
-        idleTimeoutMillis: 30000
-    };
-    var rs_pool = new pg.Pool(rs_config);
-    var pg_pool = new pg.Pool(pg_config);
-    var map = {};
 
     return {
 
@@ -67,14 +41,7 @@ function recordProcessor() {
                 // assumes a stringified JSON is being read from the stream
                 // will catch and log malformed JSON
                 try {
-                    if (mapper.parse_insert_emit(JSON.parse(data), map, pg_pool, rs_pool, socket, blacklist) == true) {
-                        mapper.update_map(pg_pool).then(function (new_map) {
-                            map = new_map;
-                            log.info('sensor mapping updated');
-                        }, function (err) {
-                            log.error('error updating sensor mapping ', err);
-                        })
-                    }
+                    mapper.parse_insert_emit(JSON.parse(data));
                 }
                 catch (err) {
                     log.error(err)

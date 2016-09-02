@@ -45,29 +45,5 @@
     "log4js": "~0.6.22",
     "mocha": "^2.1.0",
     "sinon": "^1.12.2"
-  },
-  "homepage": "https://github.com/awslabs/amazon-kinesis-client-nodejs",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/awslabs/amazon-kinesis-client-nodejs.git"
-  },
-  "bugs": {
-    "url": "https://github.com/awslabs/amazon-kinesis-client-nodejs/issues"
-  },
-  "licenses": [
-    {
-      "type": "Amazon Software License",
-      "url": "https://github.com/awslabs/amazon-kinesis-client-nodejs/blob/master/LICENSE.txt"
-    }
-  ],
-  "keywords": [
-    "api",
-    "amazon",
-    "aws",
-    "big data",
-    "kinesis",
-    "kinesis client library",
-    "kcl",
-    "node.js"
-  ]
+  }
 }
