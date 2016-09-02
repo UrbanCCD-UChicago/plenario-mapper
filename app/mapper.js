@@ -1,24 +1,117 @@
+var pg = require('pg');
 var promise = require('promise');
 var util = require('util');
 var request = require('request');
-var logger = require('./util/logger');
 
+var logger = require('./util/logger');
 var log = logger().getLogger('mapper');
 
+var socket = require('socket.io-client')('http://streaming.plenar.io/',
+    {reconnect: true, query: 'consumer_token='+process.env.CONSUMER_TOKEN});
+var pg_config = {
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    max: 10,
+    idleTimeoutMillis: 30000
+};
+var rs_config = {
+    user: process.env.RS_USER,
+    database: process.env.RS_NAME,
+    password: process.env.RS_PASSWORD,
+    host: process.env.RS_HOST,
+    port: process.env.RS_PORT,
+    max: 10,
+    idleTimeoutMillis: 30000
+};
+var rs_pool = new pg.Pool(rs_config);
+var pg_pool = new pg.Pool(pg_config);
+var map = {};
+var type_map = {};
+// array of all sensor names whose metadata appears to be incorrect
+var blacklist = [];
+
 /**
- * pulls from postgres to create most up-to-date mapping of sensor names to array of properties
+ * takes in a sensor reading, inserts it into redshift, and emits it to the socket server
+ * updates map if necessary
  *
- * @param {pg.Pool} pg_pool = postgres client pool
+ * @param {Object} obs = observation
+ * in format:
+ * { node_id: "00A",
+ *  meta_id: 23,
+ *  datetime: "2016-08-05T00:00:08.246000",
+ *  sensor: "HTU21D",
+ *  data: { temperature: 37.90,
+ *            humidity: 27.48 } }
+ */
+var parse_insert_emit = function (obs) {
+    // pulls postgres immediately if sensor is not known or properties are not reported as expected
+    if (!(obs.sensor in map) || (obs.sensor in map && invalid_keys(obs).length > 0)) {
+        log.info('discrepancy in map');
+        update_map().then(function (new_map) {
+            log.info('new map received');
+            map = new_map;
+            if (!(obs.sensor in map)) {
+                log.info('sensor not in new map');
+                // this means we don't have the mapping for a sensor and it's not in postgres
+                // send error message to apiary if message not already sent
+                send_error(obs.sensor, 'does_not_exist', null);
+                // banish observation to the 'Island of Misfit Values'
+                redshift_insert(coerce_types(obs), true);
+            }
+            else if (invalid_keys(obs).length > 0) {
+                log.info('invalid keys in new map');
+                // this means there is an unknown or faulty key being sent from beehive
+                // send error message to apiary if message not already sent
+                send_error(obs.sensor, 'invalid_key', invalid_keys(obs));
+                // banish observation to the 'Island of Misfit Values', the unknown_feature table
+                redshift_insert(coerce_types(obs), true);
+            }
+            else {
+                log.info('new map fixed everything');
+                // updating the map fixed the discrepancy
+                // send resolve message if sensor in blacklist
+                send_resolve(obs.sensor);
+                update_type_map().then(function (new_type_map) {
+                    type_map = new_type_map;
+                }, function (err) {
+                    log.error(err)
+                });
+                redshift_insert(coerce_types(obs), false);
+                var obs_list = format_obs(obs);
+                for (var i = 0; i < obs_list.length; i++) {
+                    socket.emit('internal_data', obs_list[i]);
+                }
+            }
+        }, function (err) {
+            log.error(err)
+        })
+    }
+    else {
+        // checks show that the mapping will work to input values into the database - go for it
+        redshift_insert(coerce_types(obs), false);
+        var obs_list = format_obs(obs);
+        for (var i = 0; i < obs_list.length; i++){
+            socket.emit('internal_data', obs_list[i]);
+        }
+    }
+};
+
+/**
+ * pulls from postgres to create most up-to-date mapping from each sensor name to its array of properties
+ *
  * @return {promise} yields map on fulfillment
  * in format:
- * { TMP112: { 'Temperature':'temperature.temperature' },
- * BMP340: { 'Temp':'temperature.temperature', 'RelHum':'humidity.humidity' },
- * UBQ120: { 'x':'magnetic_field.X', 'y':'magnetic_field.Y', 'z':'magnetic_field.Z' },
- * PRE450: { 'Atm Pressure':'atmospheric_pressure.pressure' } }
+ * { TMP112: { Temperature: 'temperature.temperature' },
+ * BMP340: { Temp: 'temperature.temperature', RelHum:'humidity.humidity' },
+ * UBQ120: { x: 'magnetic_field.X', y: 'magnetic_field.Y', z: 'magnetic_field.Z' },
+ * PRE450: { Atm_Pressure: 'atmospheric_pressure.pressure' } }
+ *
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
-var update_map = function (pg_pool) {
-    log.info('in update_map');
+function update_map () {
     var p = new promise(function (fulfill, reject) {
         pg_pool.connect(function (err, client, done) {
             if (err) {
@@ -29,104 +122,84 @@ var update_map = function (pg_pool) {
                 if (err) {
                     reject('error running query in update_map ', err);
                 }
-                var map = {};
+                var new_map = {};
                 for (var i = 0; i < result.rows.length; i++) {
-                    map[result.rows[i].name] = result.rows[i].observed_properties;
+                    new_map[result.rows[i].name] = result.rows[i].observed_properties;
                 }
-                fulfill(map);
+                fulfill(new_map);
             });
         });
     });
     return p
-};
+}
 
 /**
- * takes in a sensor reading, inserts it into redshift, and emits it to the socket server
+ * pulls from postgres to create most up-to-date mapping of sensor names to array of properties
+ *
+ * @return {promise} yields map on fulfillment
+ * in format:
+ * { temperature: { temperature: 'DOUBLE PRECISION' },
+ * magnetic_field: { x: 'DOUBLE PRECISION', y:'DOUBLE PRECISION', z:'DOUBLE PRECISION' } }
+ *
+ * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
+ */
+function update_type_map () {
+    var p = new promise(function (fulfill, reject) {
+        pg_pool.connect(function (err, client, done) {
+            if (err) {
+                reject('error connecting client in update_map ', err);
+            }
+            client.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
+                done();
+                if (err) {
+                    reject('error running query in update_type_map ', err);
+                }
+                var new_type_map = {};
+                for (var i = 0; i < result.rows.length; i++) {
+                    var feature_type_map = {};
+                    for (var j = 0; j < result.rows[i].observed_properties.length; j++) {
+                        feature_type_map[result.rows[i].observed_properties[j].name] = result.rows[i].observed_properties[j].type;
+                    }
+                    new_type_map[result.rows[i].name] = feature_type_map;
+                }
+                fulfill(new_type_map);
+            });
+        });
+    });
+    return p
+}
+
+/**
+ * coerces data to correct type to avoid errors inserting into redshift
  *
  * @param {Object} obs = observation
- * in format:
- * { node_id: "00A",
- *  meta_id: 23,
- *  datetime: "2016-08-05T00:00:08.246000",
- *  sensor: "HTU21D",
- *  data: { temperature: 37.90,
- *            humidity: 27.48 } }
- * @param {Object} map = sensor name to property array mapping as generated by update_map
- * @param {pg.Pool} pg_pool
- * @param {pg.Pool} rs_pool
- * @param {socket} socket = socket.io client sending data to socket server app
- * @param {Array} blacklist = array of all sensor names whose metadata appears to be incorrect
- * @return {boolean} true if map needs to be updated, false otherwise
+ * @return {Object} type coerced observation
  */
-var parse_insert_emit = function (obs, map, pg_pool, rs_pool, socket, blacklist) {
-    // pulls postgres immediately if sensor is not known or properties are not reported as expected
-    if (!(obs.sensor in map) || (obs.sensor in map && invalid_keys(obs, map).length > 0)) {
-        log.info('discrepancy in map');
-        update_map(pg_pool).then(function (new_map) {
-            log.info('new map received');
-            log.info(new_map);
-            if (!(obs.sensor in new_map)) {
-                log.info('sensor not in new map');
-                // this means we don't have the mapping for a sensor and it's not in postgres
-                // send message to apiary if message not already sent
-                send_error(obs.sensor, blacklist, 'does_not_exist', null);
-                // banish observation to the 'Island of Misfit Values'
-                redshift_insert(obs, new_map, rs_pool, true);
-                return true
-            }
-            else if (invalid_keys(obs, new_map).length > 0) {
-                log.info('invalid keys in new map');
-                // this means there is an unknown or faulty key being sent from beehive
-                // send message to apiary if message not already sent
-                send_error(obs.sensor, blacklist, 'invalid_key', invalid_keys(obs, new_map));
-                // banish observation to the 'Island of Misfit Values', the unknown_feature table
-                redshift_insert(obs, new_map, rs_pool, true);
-                return true
-            }
-            else {
-                log.info('new map fixed everything');
-                // updating the map fixed the discrepancy
-                // send delete message if sensor in blacklist
-                send_correct(obs.sensor, blacklist);
-                redshift_insert(obs, new_map, rs_pool, false);
-                var obs_list = format_obs(obs, new_map);
-                for (var i = 0; i < obs_list.length; i++) {
-                    socket.emit('internal_data', obs_list[i]);
-                }
-                return true
-            }
-        }, function (err) {
-            log.error(err)
-        })
-    }
-    else {
-        // checks show that the mapping will work to input values into the database - go for it
-        redshift_insert(obs, map, rs_pool, false);
-        var obs_list = format_obs(obs, map);
-        for (var i = 0; i < obs_list.length; i++){
-            socket.emit('internal_data', obs_list[i]);
+function coerce_types (obs) {
+    Object.keys(obs.data).forEach(function (key) {
+        var feature = map[obs.sensor][key].split('.')[0];
+        var property = map[obs.sensor][key].split('.')[1];
+        if (type_map[feature][property] == 'VARCHAR') {
+            obs.data[key] = String(obs.data[key]);
         }
-        return false
-    }
-};
+        else if (type_map[feature][property] == 'INT') {
+            obs.data[key] = parseInt(obs.data[key]);
+        }
+        else if (type_map[feature][property] == 'FLOAT') {
+            obs.data[key] = Number(obs.data[key]);
+        }
+    });
+    return obs
+}
 
 /**
  * inserts observation into redshift
  *
  * @param {Object} obs = observation
- * in format:
- * { node_id: "00A",
- *  meta_id: 23,
- *  datetime: "2016-08-05T00:00:08.246000",
- *  sensor: "HTU21D",
- *  data: { temperature: 37.90,
- *            humidity: 27.48 } }
- * @param {Object} map = sensor name to property array mapping as generated by update_map
- * @param {pg.Pool} rs_pool
  * @param {boolean} misfit = true if FoI table cannot be found then value array must be stored as a string
  * in the 'unknown_feature' table (AKA the 'Island of Misfit Values')
  */
-function redshift_insert(obs, map, rs_pool, misfit) {
+function redshift_insert(obs, misfit) {
     // works off (node_id, datetime, sensor, {values}, procedures) database model for now
     // if meta_id format is accepted, change this
     rs_pool.connect(function (err, rs_client, done) {
@@ -134,11 +207,26 @@ function redshift_insert(obs, map, rs_pool, misfit) {
             log.error('error connecting client in redshift_insert ', err)
         }
         if (misfit) {
-            rs_client.query(misfit_query_text(obs), function(err) {
+            // split obs into one copy containing all valid keys, one copy containing all invalid keys
+            // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
+            var misfit_obs = JSON.parse(JSON.stringify(obs));
+            var invalid_keys = invalid_keys(obs);
+            Object.keys(misfit_obs.data).forEach(function (key) {
+                if (invalid_keys.indexOf(key) < 0) {
+                    delete misfit_obs.data[key]
+                }
+            });
+            Object.keys(obs.data).forEach(function (key) {
+                if (invalid_keys.indexOf(key) >= 0) {
+                    delete obs.data[key]
+                }
+            });
+            rs_client.query(misfit_query_text(misfit_obs), function(err) {
                 if (err) {
                     log.error('error inserting data into unknown_feature table ', err)
                 }
             });
+            redshift_insert(obs, false);
             done();
         }
         else {
@@ -151,7 +239,7 @@ function redshift_insert(obs, map, rs_pool, misfit) {
             });
             for (var j = 0; j < all_features.length; j++) {
                 var feature = all_features[j];
-                rs_client.query(feature_query_text(obs, map, feature), function(err) {
+                rs_client.query(feature_query_text(obs, feature), function(err) {
                     if (err) {
                         log.error('error inserting data into ' + feature.toLowerCase() + ' table ', err)
                     }
@@ -163,26 +251,25 @@ function redshift_insert(obs, map, rs_pool, misfit) {
 }
 
 /**
- * generate query text to insert data into the unknown_feature table
+ * generates query text to insert data into the unknown_feature table
  *
  * @param {Object} obs
  * @return {String} query_text
  */
-var misfit_query_text = function (obs) {
+function misfit_query_text (obs) {
     return util.format("INSERT INTO unknown_feature " +
         "VALUES ('%s', '%s', %s, '%s', '%s');",
         obs.node_id, obs.datetime, obs.meta_id, obs.sensor, JSON.stringify(obs.data));
-};
+}
 
 /**
- * generate query text to insert data into a given feature of interest table
+ * generates query text to insert data into a given feature of interest table
  *
  * @param {Object} obs
- * @param {Object} map
  * @param {String} feature
  * @return {String} query_text
  */
-var feature_query_text = function(obs, map, feature) {
+function feature_query_text (obs, feature) {
     var query_text = util.format("INSERT INTO %s (node_id, datetime, meta_id, sensor, ", feature.toLowerCase());
     var c = 0;
     Object.keys(map[obs.sensor]).forEach(function(key) {
@@ -203,37 +290,31 @@ var feature_query_text = function(obs, map, feature) {
     });
     query_text += ');';
     return query_text
-};
+}
 
 /**
  * splits observation into formatted feature of interest output JSON
  *
  * @param {Object} obs = observation
- * in format:
- * { node_id: "00A",
- *  meta_id: 23,
- *  datetime: "2016-08-05T00:00:08.246000",
- *  sensor: "HTU21D",
- *  data: { temperature: 37.90,
- *            humidity: 27.48 } }
- * @param {Object} map = sensor name to property array mapping as generated by update_map
  * @return {Array} array of formatted observation objects
  * in format:
  * [
  *  { node_id: "00A",
  *  datetime: "2016-08-05T00:00:08.246000",
+ *  meta_id: 23,
  *  sensor: "HTU21D",
  *  feature_of_interest: "temperature",
  *  results: { temperature: 37.90 } },
- *  
+ *
  *  { node_id: "00A",
  *  datetime: "2016-08-05T00:00:08.246000",
+ *  meta_id: 23,
  *  sensor: "HTU21D",
  *  feature_of_interest: "humidity",
  *  results: { humidity: 27.48 } }
  *  ]
  */
-var format_obs = function (obs, map) {
+function format_obs (obs) {
     // features is simply an array of feature names matching the order of obs_list for easy key finding
     var obs_list = [];
     var features = [];
@@ -253,16 +334,15 @@ var format_obs = function (obs, map) {
         obs_list[features.indexOf(feature)].results[property] = obs.data[key];
     });
     return obs_list
-};
+}
 
 /**
- * determine if observation can be properly mapped
+ * determines if observation can be properly mapped
  *
  * @param {Object} obs
- * @param {Object} map
  * @return {Array} array of invalid keys
  */
-function invalid_keys(obs, map) {
+function invalid_keys(obs) {
     var keys = [];
     Object.keys(obs.data).forEach(function (key) {
         if (!(key in map[obs.sensor])) {
@@ -276,18 +356,17 @@ function invalid_keys(obs, map) {
  * sends message to apiary if sensor not already in blacklist
  *
  * @param {String} sensor = sensor name
- * @param {Array} blacklist = array of all sensor names whose metadata appears to be incorrect
  * @param {String} message_type
- * @param {Array} keys = invalid key names
+ * @param {Array} invalid_keys
  */
-function send_error(sensor, blacklist, message_type, keys) {
+function send_error(sensor, message_type, invalid_keys) {
     var message;
     if (message_type == 'does_not_exist') {
         message = 'Sensor ' + sensor + ' not found in sensor metadata. ' +
             'Please add this sensor.';
     }
     else if (message_type == 'invalid_key') {
-        message = 'Received data from sensor ' + sensor + ' with unknown key(s) ' + keys + '. ' +
+        message = 'Received data from sensor ' + sensor + ' with unknown key(s) ' + invalid_keys + '. ' +
             'Please update the keys and properties in this sensors metadata.';
     }
 
@@ -312,9 +391,8 @@ function send_error(sensor, blacklist, message_type, keys) {
  * sends message to apiary communicating that updating the map from postgres resolved previous discrepancies
  *
  * @param {String} sensor = sensor name
- * @param {Array} blacklist = array of all sensor names whose metadata appears to be incorrect
  */
-function send_correct(sensor, blacklist) {
+function send_resolve(sensor) {
     request.post('http://' + process.env.PLENARIO_HOST + '/apiary/send_message',
         {
             json: {
@@ -330,12 +408,4 @@ function send_correct(sensor, blacklist) {
     blacklist.splice(blacklist.indexOf(sensor), 1)
 }
 
-// exported for use in kcl_app
-module.exports.update_map = update_map;
 module.exports.parse_insert_emit = parse_insert_emit;
-module.exports.format_obs = format_obs;
-
-// exported for testing
-module.exports.misfit_query_text = misfit_query_text;
-module.exports.feature_query_text = feature_query_text;
-module.exports.format_obs = format_obs;
