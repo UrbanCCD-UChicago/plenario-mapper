@@ -1,0 +1,24 @@
+{
+  "name": "mapper-app",
+  "description": "node.js application that consumes from AWS Kinesis and maps incoming data into AWS Redshift and out to socket.io server",
+  "version": "0.0.0",
+  "main": "./app/consumer/kcl_app.js",
+  "scripts": {
+    "test": "nodeunit"
+  },
+  "engines": {
+    "node": "6.4.1"
+  },
+  "dependencies": {
+    "log4js": "^0.6.38",
+    "pg": "^6.1.0",
+    "promise": "~7.1.1",
+    "request": "^2.74.0",
+    "socket.io-client": "~1.4.8"
+  },
+  "devDependencies": {
+    "nodeunit": "~0.9.4",
+    "rewire": "~2.5.2",
+    "underscore": "~1.8.3"
+  }
+}
