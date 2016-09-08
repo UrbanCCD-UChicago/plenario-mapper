@@ -4,7 +4,7 @@
  * $ nodeunit tests.js
  */
 var rewire = require('rewire');
-var mapper = rewire('../EB_app/mapper');
+var mapper = rewire('../app/mapper');
 var _ = require('underscore');
 
 mapper.__set__('map',

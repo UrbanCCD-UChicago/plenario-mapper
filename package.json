@@ -2,14 +2,26 @@
   "name": "mapper-app",
   "description": "node.js application that consumes from AWS Kinesis and maps incoming data into AWS Redshift and out to socket.io server",
   "version": "0.0.0",
-  "main": "./app/consumer/kcl_app.js",
+  "main": "app/index.js",
+  "bin": {
+    "kcl-bootstrap": "app/bin/kcl-bootstrap",
+    "kcl-bootstrap.bat": "app/bin/kcl-bootstrap.bat"
+  },
   "scripts": {
-    "test": "nodeunit"
+    "build": "grunt build",
+    "compile": "grunt compile",
+    "clean": "grunt clean",
+    "release": "grunt release",
+    "doc": "grunt jsdoc",
+    "start": "nodejs app/bin/kcl-bootstrap -e -p app/consumer/sample.properties",
+    "test": "nodeunit tests/tests.js"
   },
   "engines": {
     "node": "6.4.1"
   },
   "dependencies": {
+    "commander": "~2.6.0",
+    "machina": "~1.0.0-1",
     "log4js": "^0.6.38",
     "pg": "^6.1.0",
     "promise": "~7.1.1",
@@ -19,6 +31,19 @@
   "devDependencies": {
     "nodeunit": "~0.9.4",
     "rewire": "~2.5.2",
-    "underscore": "~1.8.3"
+    "underscore": "~1.8.3",
+    "async": "~0.9.0",
+    "aws-sdk": "2.x",
+    "blanket": "~1.1.5",
+    "chai": "^1.10.0",
+    "grunt": "~0.4.5",
+    "grunt-cli": "~0.1.13",
+    "grunt-contrib-clean": "~0.6.0",
+    "grunt-contrib-jshint": "~0.6.4",
+    "grunt-jsdoc": "~0.5.8",
+    "grunt-mocha-test": "~0.12.7",
+    "log4js": "~0.6.22",
+    "mocha": "^2.1.0",
+    "sinon": "^1.12.2"
   }
 }
