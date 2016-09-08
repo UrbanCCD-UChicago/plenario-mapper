@@ -1,0 +1,21 @@
+language: node_js
+node_js:
+- '6'
+install:
+- npm install
+script:
+- npm test
+deploy:
+  provider: elasticbeanstalk
+  access_key_id: AKIAIUUOLTTRQAXZHQEQ
+  secret_access_key:
+    secure: eg5pZvdPEwyJT6KlJPkNW4xqQxI8WDnrTUMW1KDMnptj4yFHSct5iVs1gdIz1jOIYk6noztQdg0SOtcjJMOKIXmK1mnALGoxOrYm5U8ZRNQjz4tfxf9xy+VBhLSjoM3DHArrkjvMngwfCMpHYF3MgjbPX3aB20qjP3PM2oIX8QreFUIsoHBI16chzsDwpnszAbSOobLBG2Rpc80yl6FotZuw9e0jxqWbxmsdOTqus7Xmx1BXVm2j+ZNc6ijaCncuN3wSLhra3upeLEXrecrWLHtHgDHgjsba1tzlsFe0ao4lRAMP3m4B/XxXqH1HtEHCK3XG4WIclBbe/aTTBykWGHVLktkC0p+S1tnmnY23u2D+4xYAsfAdAz91d4MPo7/Sa5FOTIA+s4tJJ+NkNTwTd76K/yTYSRGpvkziVx2vBm/LiLs2WqQzrAadfO/K0HQiFNS+G7EfNSXjniYtlHQsPtBAGTsV0UDS11xI9UkVXf8Kh+N5dpUB14639jsNGerdWUF0dsrHsU/wq3bR0BPZg7fH3+bJhmjB3ICXdwrItvEXRpVfrZ9493SPGZ+Zg4Wzs9gh4j6/SgHqQ23YvQl9XdjC1Ktzb87l7gaX4Iue1vbbNvEEeZpJX7FBG06ISqJkU5antLprKeDow0P/2BiAO02dvXo1gtxbyijj9+a1Ur4=
+  region: us-east-1
+  app: Kinesis-Consumer
+  env: kinesisConsumer-env2
+  bucket_name: elasticbeanstalk-us-east-1-031052761859
+  on:
+    repo: UrbanCCD-UChicago/plenario-mapper
+notifications:
+  slack:
+    secure: IsCJP58JKofvwy4jVC4DEZSUShLp+i4V94dzhKSoFrhRFKeT3Te/Hn+uDPBT+ZwTcs7QF0k1DfBHTZt0za1U/Q2fabhxxarrtR3v9DGWo2OfdBjyY9TM05JmZyFESov4CxzA4USvFd+GO7P6QY1IhdDF8oSa9dCViTAerBOGLMk=
