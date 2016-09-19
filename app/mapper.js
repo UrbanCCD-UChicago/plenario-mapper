@@ -52,7 +52,7 @@ var parse_insert_emit = function (obs) {
         (invalid_keys(obs).unknown_keys.length > 0 || Object.keys(invalid_keys(obs).coercion_errors).length > 0))) {
         log.info('discrepancy in map');
         update_map().then(function (new_map) {
-            log.info('new map received');
+            log.info('map updated');
             map = new_map;
             if (!(obs.sensor in map)) {
                 log.info('sensor not in new map');
@@ -239,7 +239,7 @@ function redshift_insert(obs, misfit) {
             // split obs into one copy containing all valid keys, one copy containing all invalid keys
             // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
             var misfit_obs = JSON.parse(JSON.stringify(obs));
-            var invalid_keys = invalid_keys(obs).unknown_keys.concat(Object.keys(invalid_keys(obs.coercion_errors)));
+            var invalid_keys = invalid_keys(obs).unknown_keys.concat(Object.keys(invalid_keys(obs).coercion_errors));
             Object.keys(misfit_obs.data).forEach(function (key) {
                 if (invalid_keys.indexOf(key) < 0) {
                     delete misfit_obs.data[key]
@@ -439,7 +439,7 @@ function send_resolve(sensor) {
         {
             json: {
                 name: sensor,
-                value: 'resolve'
+                value: "resolve"
             }
         }, function (err, response, body) {
             log.info(body);
