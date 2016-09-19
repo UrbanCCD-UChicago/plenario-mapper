@@ -17,6 +17,22 @@ mapper.__set__('map',
             X: "magnetic_field.x",
             Y: "magnetic_field.y",
             Z: "magnetic_field.z"
+        },
+        camera: {
+            standing_water: "cv.standing_water",
+            cloud_type: "cv.cloud_type",
+            num_pedestrians: "cv.num_pedestrians",
+            traffic_density: "cv.traffic_density"
+        }
+    });
+
+mapper.__set__('type_map',
+    {
+        cv: {
+            standing_water: 'BOOL',
+            cloud_type: 'VARCHAR',
+            num_pedestrians: 'INTEGER',
+            traffic_density: 'FLOAT'
         }
     });
 
@@ -131,5 +147,165 @@ exports.format_obs = function (test) {
             }
         }
     ]));
+    test.done();
+};
+
+// test type coercion
+exports.coerce_types = function (test) {
+    var obs1 = {
+        node_id: "00A",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: 1,
+            cloud_type: 1,
+            num_pedestrians: 1,
+            traffic_density: 1
+        }
+    };
+
+    var obs2 = {
+        node_id: "00A",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: "0",
+            cloud_type: "0",
+            num_pedestrians: "0",
+            traffic_density: "0"
+        }
+    };
+
+    var obs3 = {
+        node_id: "00A",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: "true",
+            cloud_type: "true",
+            num_pedestrians: "true",
+            traffic_density: "true"
+        }
+    };
+
+    var obs4 = {
+        node_id: "00A",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: false,
+            cloud_type: false,
+            num_pedestrians: false,
+            traffic_density: false
+        }
+    };
+
+    var obs5 = {
+        node_id: "00A",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: 10,
+            cloud_type: 10,
+            num_pedestrians: 10,
+            traffic_density: 10
+        }
+    };
+
+    test.ok(_.isEqual(mapper.__get__('coerce_types')(obs1), {
+        result: {
+            node_id: "00A",
+            meta_id: 23,
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            data: {
+                standing_water: true,
+                cloud_type: "1",
+                num_pedestrians: 1,
+                traffic_density: 1
+            }
+        }, errors: {}
+    }));
+
+    test.ok(_.isEqual(mapper.__get__('coerce_types')(obs2), {
+        result: {
+            node_id: "00A",
+            meta_id: 23,
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            data: {
+                standing_water: false,
+                cloud_type: "0",
+                num_pedestrians: 0,
+                traffic_density: 0
+            }
+        }, errors: {}
+    }));
+    
+    test.ok(_.isEqual(mapper.__get__('coerce_types')(obs3), {
+        result: {
+            node_id: "00A",
+            meta_id: 23,
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            data: {
+                standing_water: true,
+                cloud_type: "true",
+                num_pedestrians: "true",
+                traffic_density: "true"
+            }
+        }, errors: {
+            num_pedestrians: {
+                sensor: "camera", value: "true"
+            },
+            traffic_density: {
+                sensor: "camera", value: "true"
+            }
+        }
+    }));
+
+    test.ok(_.isEqual(mapper.__get__('coerce_types')(obs4), {
+        result: {
+            node_id: "00A",
+            meta_id: 23,
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            data: {
+                standing_water: false,
+                cloud_type: "false",
+                num_pedestrians: false,
+                traffic_density: 0
+            }
+        }, errors: {
+            num_pedestrians: {
+                sensor: "camera", value: false
+            }
+        }
+    }));
+
+    test.ok(_.isEqual(mapper.__get__('coerce_types')(obs5), {
+        result: {
+            node_id: "00A",
+            meta_id: 23,
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            data: {
+                standing_water: 10,
+                cloud_type: "10",
+                num_pedestrians: 10,
+                traffic_density: 10
+            }
+        }, errors: {
+            standing_water: {
+                sensor: "camera", value: 10
+            }
+        }
+    }));
+
     test.done();
 };
