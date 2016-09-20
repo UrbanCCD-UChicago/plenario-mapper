@@ -14,7 +14,7 @@
     "release": "grunt release",
     "doc": "grunt jsdoc",
     "start": "nodejs app/bin/kcl-bootstrap -e -p app/consumer/sample.properties",
-    "test": "nodeunit tests/tests.js"
+    "test": "nodeunit tests"
   },
   "engines": {
     "node": "6.4.1"
