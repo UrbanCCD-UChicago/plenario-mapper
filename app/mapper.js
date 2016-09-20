@@ -60,7 +60,7 @@ var parse_insert_emit = function (obs) {
                 // send error message to apiary if message not already sent
                 send_error(obs.sensor, 'does_not_exist', null);
                 // banish observation to the 'Island of Misfit Values'
-                redshift_insert(coerce_types(obs).result, true);
+                redshift_insert(obs, true);
             }
             else if (invalid_keys(obs).unknown_keys.length > 0 || Object.keys(invalid_keys(obs).coercion_errors).length > 0) {
                 log.info('invalid keys in new map');
@@ -69,7 +69,7 @@ var parse_insert_emit = function (obs) {
                 // send error message to apiary if message not already sent
                 send_error(obs.sensor, 'invalid_key', invalid_keys(obs));
                 // banish observation to the 'Island of Misfit Values', the unknown_feature table
-                redshift_insert(coerce_types(obs).result, true);
+                redshift_insert(obs, true);
             }
             else {
                 log.info('new map fixed everything');
@@ -173,10 +173,18 @@ function update_type_map () {
 
 /**
  * coerces data to correct type to avoid errors inserting into redshift
- * throws error containing dictionary of {key:error, ...} if coercion is not possible
  *
  * @param {Object} obs = observation
- * @return {Object} {result={coerced obs}, errors={errors}}
+ * @return {Object}
+ * { result:
+ *     { coerced obs },
+ *   errors:
+ *   { Temp:
+ *     { sensor: HTU21D,
+ *       value: true
+ *     }
+ *   }
+ * }
  */
 function coerce_types (obs) {
     var errors = {};
@@ -186,7 +194,7 @@ function coerce_types (obs) {
         if (type_map[feature][property] == 'VARCHAR') {
             obs.data[key] = String(obs.data[key]);
         }
-        else if (type_map[feature][property] == 'INTEGER') {
+        else if (type_map[feature][property] == 'INTEGER' || type_map[feature][property] == 'INT') {
             if (isNaN(parseInt(obs.data[key]))) {
                 errors[key] = {sensor:obs.sensor, value:obs.data[key]};
             }
@@ -194,7 +202,7 @@ function coerce_types (obs) {
                 obs.data[key] = parseInt(obs.data[key]);
             }
         }
-        else if (type_map[feature][property] == 'FLOAT') {
+        else if (type_map[feature][property] == 'FLOAT' || type_map[feature][property] == 'DOUBLE') {
             if (isNaN(Number(obs.data[key]))) {
                 errors[key] = {sensor:obs.sensor, value:obs.data[key]};
             }
@@ -202,7 +210,7 @@ function coerce_types (obs) {
                 obs.data[key] = Number(obs.data[key]);
             }
         }
-        else if (type_map[feature][property] == 'BOOL') {
+        else if (type_map[feature][property] == 'BOOL' || type_map[feature][property] == 'BOOLEAN') {
             if (obs.data[key] == '1' ||
                 (typeof obs.data[key] == 'string' && obs.data[key].toUpperCase() == 'TRUE') ||
                 obs.data[key] == true) {
@@ -255,7 +263,7 @@ function redshift_insert(obs, misfit) {
                     log.error('error inserting data into unknown_feature table ', err)
                 }
             });
-            redshift_insert(obs, false);
+            redshift_insert(coerce_types(obs).result, false);
             done();
         }
         else {
@@ -311,7 +319,7 @@ function feature_query_text (obs, feature) {
         }
     });
     query_text = util.format(query_text + ") " +
-        "VALUES ('%s', '%s', %s, '%s'", obs.node_id, obs.datetime, obs.meta_id, obs.sensor);
+        "VALUES ('%s', '%s', %s, '%s'", obs.node_id.toLowerCase(), obs.datetime, obs.meta_id, obs.sensor.toLowerCase());
     Object.keys(map[obs.sensor]).forEach(function(key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
             query_text += ', ' + obs.data[key];
@@ -354,8 +362,8 @@ function format_obs (obs) {
         property = map[obs.sensor][key].split(/\.(.+)?/)[1];
         if (features.indexOf(feature) < 0) {
             obs_list.push({feature_of_interest: feature,
-                node_id: obs.node_id,
-                sensor: obs.sensor,
+                node_id: obs.node_id.toLowerCase(),
+                sensor: obs.sensor.toLowerCase(),
                 datetime: obs.datetime,
                 results: {}});
             features.push(feature)
@@ -372,14 +380,13 @@ function format_obs (obs) {
  * @return {Object} {unknown_keys:[...], coercion_errors:{key:{sensor:x, data={...}}, ...}}
  */
 function invalid_keys(obs) {
-    var args = {unknown_keys:[], coercion_errors:{}};
+    var unknown_keys = [];
     Object.keys(obs.data).forEach(function (key) {
         if (!(key in map[obs.sensor])) {
-            args.unknown_keys.push(key);
+            unknown_keys.push(key);
         }
     });
-    args.coercion_errors = coerce_types(obs).errors;
-    return args
+    return {unknown_keys:unknown_keys, coercion_errors:coerce_types(obs).errors}
 }
 
 /**
