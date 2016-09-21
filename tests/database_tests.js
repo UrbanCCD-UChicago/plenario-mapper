@@ -76,7 +76,7 @@ exports.update_type_map = function (test) {
     });
 };
 
-// test redshift inserting and socket emitting
+// test inserting into redshift and emitting to the socket
 exports.parse_insert_emit = function (test) {
     mapper.__set__('pg_pool', pg_pool);
     mapper.__set__('rs_pool', rs_pool);
