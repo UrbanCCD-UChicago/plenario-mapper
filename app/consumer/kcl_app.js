@@ -20,13 +20,13 @@ function recordProcessor() {
     return {
 
         initialize: function (initializeInput, completeCallback) {
-            log.info('In initialize');
+            // log.info('In initialize');
             shardId = initializeInput.shardId;
             completeCallback();
         },
 
         processRecords: function (processRecordsInput, completeCallback) {
-            log.info('In processRecords');
+            // log.info('In processRecords');
             if (!processRecordsInput || !processRecordsInput.records) {
                 completeCallback();
                 return;
@@ -46,7 +46,7 @@ function recordProcessor() {
                 catch (err) {
                     log.error(err)
                 }
-                log.info(util.format('ShardID: %s, Record: %s, SeqenceNumber: %s, PartitionKey:%s', shardId, data, sequenceNumber, partitionKey));
+                // log.info(util.format('ShardID: %s, Record: %s, SeqenceNumber: %s, PartitionKey:%s', shardId, data, sequenceNumber, partitionKey));
             }
             if (!sequenceNumber) {
                 completeCallback();
@@ -54,7 +54,7 @@ function recordProcessor() {
             }
             // If checkpointing, completeCallback should only be called once checkpoint is complete.
             processRecordsInput.checkpointer.checkpoint(sequenceNumber, function (err, sequenceNumber) {
-                log.info(util.format('Checkpoint successful. ShardID: %s, SeqenceNumber: %s', shardId, sequenceNumber));
+                // log.info(util.format('Checkpoint successful. ShardID: %s, SeqenceNumber: %s', shardId, sequenceNumber));
                 completeCallback();
             });
         },
