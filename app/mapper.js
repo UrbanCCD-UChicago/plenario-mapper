@@ -57,6 +57,7 @@ var parse_insert_emit = function (obs) {
             log.info('map updated');
             map = new_map;
             if (!(obs.sensor in map)) {
+                console.log('IN PARSE_INSERT_EMIT:IF');
                 log.info('sensor not in new map');
                 // this means we don't have the mapping for a sensor and it's not in postgres
                 // send error message to apiary if message not already sent
@@ -65,6 +66,7 @@ var parse_insert_emit = function (obs) {
                 redshift_insert(obs, true);
             }
             else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
+                console.log('IN PARSE_INSERT_EMIT:ELSE IF');
                 log.info('invalid keys in new map');
                 // this means there is an unknown or faulty key being sent from beehive
                 // or the types of this observation cannot be correctly coerced
@@ -75,6 +77,7 @@ var parse_insert_emit = function (obs) {
                 redshift_insert(obs, true);
             }
             else {
+                console.log('IN PARSE_INSERT_EMIT:ELSE');
                 log.info('new map fixed everything');
                 // updating the map fixed the discrepancy
                 // send resolve message if sensor in blacklist
@@ -91,6 +94,7 @@ var parse_insert_emit = function (obs) {
         })
     }
     else {
+        console.log('IN PARSE_INSERT_EMIT:ELSE');
         // checks show that the mapping will work to input values into the database - go for it
         redshift_insert(coerce_types(obs).result, false);
     }
