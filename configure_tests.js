@@ -8,7 +8,7 @@ var pg_config = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     max: 10,
-    idleTimeoutMillis: 300
+    idleTimeoutMillis: 1000
 };
 var rs_config = {
     user: process.env.RS_USER,
@@ -17,7 +17,7 @@ var rs_config = {
     host: process.env.RS_HOST,
     port: process.env.RS_PORT,
     max: 10,
-    idleTimeoutMillis: 300
+    idleTimeoutMillis: 1000
 };
 var rs_pool = new pg.Pool(rs_config);
 var pg_pool = new pg.Pool(pg_config);
