@@ -47,6 +47,7 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_insert_emit = function (obs) {
+    console.log('IN PARSE_INSERT_EMIT');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
     if (!(obs.sensor in map) || (obs.sensor in map &&
         (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0))) {
@@ -164,6 +165,7 @@ function update_type_map() {
  * }
  */
 function coerce_types(obs) {
+    console.log('IN COERCE_TYPES');
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
@@ -216,6 +218,7 @@ function coerce_types(obs) {
  * in the 'unknown_feature' table (AKA the 'Island of Misfit Values')
  */
 function redshift_insert(obs, misfit) {
+    console.log('IN REDSHIFT_INSERT');
         if (misfit) {
             // split obs into one copy containing all valid keys, one copy containing all invalid keys
             // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
@@ -257,6 +260,7 @@ function redshift_insert(obs, misfit) {
             // emit salvageable data to socket
             var obs_list = format_obs(obs);
             for (var i = 0; i < obs_list.length; i++) {
+                console.log('EMITTING TO SOCKET');
                 socket.emit('internal_data', obs_list[i]);
             }
         }
