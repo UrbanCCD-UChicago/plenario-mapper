@@ -47,6 +47,8 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_insert_emit = function (obs) {
+    console.log(obs);
+    console.log('IN PARSE_INSERT_EMIT');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
     if (!(obs.sensor in map) || (obs.sensor in map &&
         (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0))) {
@@ -55,6 +57,7 @@ var parse_insert_emit = function (obs) {
             log.info('map updated');
             map = new_map;
             if (!(obs.sensor in map)) {
+                console.log('IN PARSE_INSERT_EMIT:IF');
                 log.info('sensor not in new map');
                 // this means we don't have the mapping for a sensor and it's not in postgres
                 // send error message to apiary if message not already sent
@@ -63,6 +66,7 @@ var parse_insert_emit = function (obs) {
                 redshift_insert(obs, true);
             }
             else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
+                console.log('IN PARSE_INSERT_EMIT:ELSE IF');
                 log.info('invalid keys in new map');
                 // this means there is an unknown or faulty key being sent from beehive
                 // or the types of this observation cannot be correctly coerced
@@ -73,6 +77,7 @@ var parse_insert_emit = function (obs) {
                 redshift_insert(obs, true);
             }
             else {
+                console.log('IN PARSE_INSERT_EMIT:ELSE');
                 log.info('new map fixed everything');
                 // updating the map fixed the discrepancy
                 // send resolve message if sensor in blacklist
@@ -89,6 +94,7 @@ var parse_insert_emit = function (obs) {
         })
     }
     else {
+        console.log('IN PARSE_INSERT_EMIT:ELSE');
         // checks show that the mapping will work to input values into the database - go for it
         redshift_insert(coerce_types(obs).result, false);
     }
@@ -107,6 +113,7 @@ var parse_insert_emit = function (obs) {
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
 function update_map() {
+    console.log('IN UPDATE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
             if (err) {
@@ -132,6 +139,7 @@ function update_map() {
  * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
  */
 function update_type_map() {
+    console.log('IN UPDATE_TYPE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
                 if (err) {
@@ -164,6 +172,7 @@ function update_type_map() {
  * }
  */
 function coerce_types(obs) {
+    console.log('IN COERCE_TYPES');
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
@@ -216,6 +225,7 @@ function coerce_types(obs) {
  * in the 'unknown_feature' table (AKA the 'Island of Misfit Values')
  */
 function redshift_insert(obs, misfit) {
+    console.log('IN REDSHIFT_INSERT');
         if (misfit) {
             // split obs into one copy containing all valid keys, one copy containing all invalid keys
             // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
@@ -257,6 +267,7 @@ function redshift_insert(obs, misfit) {
             // emit salvageable data to socket
             var obs_list = format_obs(obs);
             for (var i = 0; i < obs_list.length; i++) {
+                console.log('EMITTING TO SOCKET');
                 socket.emit('internal_data', obs_list[i]);
             }
         }
