@@ -2,14 +2,8 @@ language:
 - node_js
 node_js:
 - '6'
-sudo: required
-cache: pip
 env:
   global:
-  # AWS credentials
-  - secure: h+u2fepdQV0B6SX/9fzlikdgNlaNpOJJDw5OXS8t0ab+gXu3atzleRAJBMSGEp7+DIjNUjvTMxwTk52qnihP0KsmTEYg/tH0Ka/zXpb+VDn4fD8CQfkGQR4Xd/lA7u4NxrcofC93mzsaMYrSTpceYOVQas2XoK25/Tlda87wbZ0nlaykOYzGBIehDuPndRRTSniM5u0vY3FWLP6sdUC1W/LKvg0T5hXdLN6lFQaYybb5mC1PxYkLhYGeX3zWaktHrrNwHo2tcIn+r6VKa2vG19tb7POsNsLT8K+0CFFxKZSpkDr3jkL8bTAo3DQ27htLqAOL9J4IV4xxUrZ+0tnKbeDeAsinVAVh8+1RqfrgsKLkPcC5Pn9kAPBS5AbfjafAH/0fXLTRwjLl78O7vPVZLmSbGxPfml1uzpdbvIPk+5rsRcYFZjscxkH/lmb65ly5OW6BuWtjbNraTPsYA8iBCuSHTOfWYHbLJG5edI+VlWpZCetTLhM3BXjRLE6VeyEaE9fsRZGUM5aiZ//XRCtp1HZi8G95QC1DloTfAmFzcFafTQSe+07BQYnZByJynv3AJ5EDtgmFt+Llf5r2MINFJJ0v2/OzjxQlwaMqzPo3gxzzEVIwBukyVjdcnuIv5wl/EEP64CS/FDIbLJhWSYQ+wr7W2CkDUWwn4Uhc6E8FdPk=
-  - secure: sChHMVvsG5yIVBCy5huiKyK14ujZKA6zrRmvprdlfbSZBKHQXLEbLbmrm34A5RC2qjXA4yR/PDIE5YouY9eXOQ/w+7HX8AitB/cfXaFHjdmFrS2vEACwOqODhRaciEvmzVBzqW4UxHKsxe0dpinzycn2GQE9prX0k8CukioPOVmkQB1eYYi2+J8nfT1xO85w9DuIzTc5v9poKT2IMN0B4D9O/OFlBE2WxPIwfSBCpbiMHJZFnL57E7Mb9y9i8/bi5YuwWQqEkNx2mdintY0mYkEn1icPWei+Bj1RV6LiTgqRJ3skRQ10LzPS687cfso3ttHRxEwDqS82uwdsLhnzman0VMbyI0lF+2eDJgqHYijQNzN30ZwdFhVk5tQFbiu5WoUM/nLd+agm9MzbNx/uaJ7ud8CUj+jwR29BzjXW+IyvBiYCnVYdq+5thIVDzil4r0NTWFl9JeyCRZN+Lb5BhY0PBFmjhuosVXrf/uWfETB1WE40pr8Ccp5PjJdZKjGwMVh8wfJ4DEd+KIM+rSGs6XZ6m0Lh2e6kuOasK4fvhADq/Wx7voAarPnwdrSydpkUv+wJuPOlBINhOcv2f4a88ctvcb86Y7YKCMNGuZj5nT4k3FEUeUl9VWZjyqkHWkXLcg8/KYY7r2ZUCuPF0E01uOycKhYtzyaEhAftbIVBMiU=
-  - AWS_DEFAULT_REGION=us-east-1
   # postgres test database credentials
   - DB_NAME=sensor_test
   # DB_USER
@@ -31,19 +25,11 @@ env:
   # RS_PORT
   - secure: c718z1aHk+eqKxf4dUM3q35b/KVrw+qd3c6RI4IbceFxbk6MddzYe9zEBO0+SDTcfr5Km93XtOLxDqVfgpnDi9/vdXKgVZdcCI1fMuzprSdu8+j/8Mt1D9ZcOn3po/7i1RnSgifDND7ktrifFqxDNykHtPzIU7hOLEYVJRGS7zjiYJRGxL+HCSkvKFKesiWTwHYQBmwwvE4xIsw87Jycthqd4pRCgWYogD9e212o36SpLbGp89hgf+dgVmEuaSbYELO9S3fNv8ZXv5Q8ZafXd2CRqsf9Xp6TA3cCuzO9N7Lw4awwChScJqXEG87eIdZwxk5n6rh0rOYDlR19cjA4t5Bn6/TlLSS+Fo1IU6QIn9NvsljPkh/NwVeZk/xDphGFJD/OSmIKKJLeuYJJ1X6NgJUFF+BvskWLAbnvhK7Vt0SV2U54JSB3i86ahGauNqJN54PbozdjJcjI527VMwGK92QFV3iI8WxCpNXUSYwvfR29o1v7pAy+rQ9+8FTJfDfEDaJmWOuXp9ad2rlspLh0/w/88eeBMkMDWgRD3l1f4OHDOHPmXVpW+OovAgdc/ay57rWOM8iHXHfikJsAUC6wFgw2tMyuY3sROL0wHzDRV8Ga4YRfJgjajgQ9y1zQokSOuCNBqQi8a2cCO2/L6aGNBJS6rP9Gj9mdmw4+aPoRF5g=
 install:
-- sudo pip install awscli
-- aws kinesis create-stream --stream-name TestStream --shard-count 1
 - npm install
-before_script:
-- sed -i -e 's/streamName = ObservationStream/streamName = TestStream/g' app/consumer/sample.properties
-- sed -i -e 's/applicationName = kinesis_consumer/applicationName = kinesis_consumer_test/g' app/consumer/sample.properties
+script:
 - node configure_tests.js setup
 - npm test
 - node configure_tests.js teardown
-script:
-- sed -i -e 's/streamName = TestStream/streamName = ObservationStream/g' app/consumer/sample.properties
-- sed -i -e 's/applicationName = kinesis_consumer_test/ applicationName = kinesis_consumer/g' app/consumer/sample.properties
-- aws kinesis delete-stream --stream-name TestStream
 deploy:
   provider: elasticbeanstalk
   access_key_id: AKIAIK5AQSFJXZVPPUOQ

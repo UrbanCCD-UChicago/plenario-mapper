@@ -28,6 +28,17 @@ mapper.__set__('map',
 
 mapper.__set__('type_map',
     {
+        temperature: {
+            temperature: 'FLOAT'
+        },
+        relative_humidity: {
+            humidity: 'FLOAT'
+        },
+        magnetic_field: {
+            x: 'FLOAT',
+            y: 'FLOAT',
+            z: 'FLOAT'
+        },
         cv: {
             standing_water: 'BOOL',
             cloud_type: 'VARCHAR',
@@ -77,16 +88,32 @@ exports.feature_query_text = function (test) {
             Z: 90.92
         }
     };
+    var obs3 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "hmc5883l",
+        data: {
+            Y: 32.11,
+            Z: 90.92
+        }
+    };
 
+    // split features
     test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'), "INSERT INTO temperature " +
         "(node_id, datetime, meta_id, sensor, temperature) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 37.91);");
     test.equal(mapper.__get__('feature_query_text')(obs1, 'relative_humidity'), "INSERT INTO relative_humidity " +
         "(node_id, datetime, meta_id, sensor, humidity) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 27.48);");
+    // full obs
     test.equal(mapper.__get__('feature_query_text')(obs2, 'magnetic_field'), "INSERT INTO magnetic_field " +
         "(node_id, datetime, meta_id, sensor, x, y, z) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 56.77, 32.11, 90.92);");
+    // partial obs
+    test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'), "INSERT INTO magnetic_field " +
+        "(node_id, datetime, meta_id, sensor, y, z) " +
+        "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 32.11, 90.92);");
     test.done();
 };
 
@@ -246,7 +273,7 @@ exports.coerce_types = function (test) {
             }
         }, errors: {}
     }));
-    
+
     test.ok(_.isEqual(mapper.__get__('coerce_types')(obs3), {
         result: {
             node_id: "00a",
@@ -260,14 +287,10 @@ exports.coerce_types = function (test) {
                 traffic_density: "true"
             }
         }, errors: {
-            num_pedestrians: {
-                sensor: "camera", value: "true"
-            },
-            traffic_density: {
-                sensor: "camera", value: "true"
+            num_pedestrians: "true",
+            traffic_density:  "true"
             }
-        }
-    }));
+        }));
 
     test.ok(_.isEqual(mapper.__get__('coerce_types')(obs4), {
         result: {
@@ -282,9 +305,7 @@ exports.coerce_types = function (test) {
                 traffic_density: 0
             }
         }, errors: {
-            num_pedestrians: {
-                sensor: "camera", value: false
-            }
+            num_pedestrians: false
         }
     }));
 
@@ -301,11 +322,39 @@ exports.coerce_types = function (test) {
                 traffic_density: 10
             }
         }, errors: {
-            standing_water: {
-                sensor: "camera", value: 10
-            }
+            standing_water: 10
         }
     }));
+    test.done();
+};
 
+// test invalid_keys
+exports.invalid_keys = function (test) {
+    // all valid keys
+    var obs1 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "htu21d",
+        data: {
+            Temp: 37.91,
+            Humidity: 27.48
+        }
+    };
+    // invalid keys x1 and y1
+    var obs2 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "hmc5883l",
+        data: {
+            x1: 56.77,
+            y1: 32.11,
+            Z: 90.92
+        }
+    };
+    
+    test.ok(_.isEqual(mapper.__get__('invalid_keys')(obs1), []));
+    test.ok(_.isEqual(mapper.__get__('invalid_keys')(obs2), ['x1','y1']));
     test.done();
 };
