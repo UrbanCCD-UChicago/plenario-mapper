@@ -47,6 +47,7 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_insert_emit = function (obs) {
+    console.log(obs);
     console.log('IN PARSE_INSERT_EMIT');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
     if (!(obs.sensor in map) || (obs.sensor in map &&
@@ -108,6 +109,7 @@ var parse_insert_emit = function (obs) {
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
 function update_map() {
+    console.log('IN UPDATE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
             if (err) {
@@ -133,6 +135,7 @@ function update_map() {
  * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
  */
 function update_type_map() {
+    console.log('IN UPDATE_TYPE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
                 if (err) {

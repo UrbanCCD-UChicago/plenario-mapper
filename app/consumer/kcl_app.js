@@ -42,8 +42,6 @@ function recordProcessor() {
                 // will catch and log malformed JSON
                 try {
                     mapper.parse_insert_emit(JSON.parse(data));
-                    console.log(data);
-                    console.log(JSON.parse(data));
                 }
                 catch (err) {
                     log.error(err)
