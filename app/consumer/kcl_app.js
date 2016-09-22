@@ -41,7 +41,7 @@ function recordProcessor() {
                 // assumes a stringified JSON is being read from the stream
                 // will catch and log malformed JSON
                 try {
-                    mapper.parse_insert_emit(JSON.parse(data));
+                    mapper.parse_data(JSON.parse(data));
                 }
                 catch (err) {
                     log.error(err)
