@@ -79,7 +79,7 @@ exports.update_type_map = function (test) {
 };
 
 // test inserting into redshift and emitting to the socket
-exports.parse_insert_emit = function (test) {
+exports.parse_data = function (test) {
     mapper.__set__('pg_pool', pg_pool);
     mapper.__set__('rs_pool', rs_pool);
     mapper.__set__('socket', require('socket.io-client')('http://localhost:8081/'));
@@ -215,13 +215,13 @@ exports.parse_insert_emit = function (test) {
         })
     });
 
-    var parse_insert_emit = mapper.__get__('parse_insert_emit');
-    parse_insert_emit(obs1);
-    parse_insert_emit(obs2);
-    parse_insert_emit(obs3);
-    parse_insert_emit(obs4);
-    parse_insert_emit(obs5);
-    parse_insert_emit(obs6);
+    var parse_data = mapper.__get__('parse_data');
+    parse_data(obs1);
+    parse_data(obs2);
+    parse_data(obs3);
+    parse_data(obs4);
+    parse_data(obs5);
+    parse_data(obs6);
 
     setTimeout(function () {
         test.equals(data_count, 5);

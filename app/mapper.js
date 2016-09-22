@@ -34,8 +34,8 @@ var type_map = {};
 var blacklist = [];
 
 /**
- * takes in a sensor reading, inserts it into redshift, and emits it to the socket server
- * updates map if necessary
+ * takes in and handles sensor readings
+ * updates map and type_map if necessary
  *
  * @param {Object} obs = observation
  * in format:
@@ -46,37 +46,31 @@ var blacklist = [];
  *  data: { temperature: 37.90,
  *            humidity: 27.48 } }
  */
-var parse_insert_emit = function (obs) {
-    log.info('IN PARSE_INSERT_EMIT');
+var parse_data = function (obs) {
+    log.info('IN PARSE_DATA');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
-    if (!(obs.sensor in map) || (obs.sensor in map &&
-        (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0))) {
+    if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
         log.info('discrepancy in map');
         update_map().then(function (new_map) {
             log.info('map updated');
             map = new_map;
             if (!(obs.sensor in map)) {
-                log.info('IN PARSE_INSERT_EMIT:IF');
                 log.info('sensor not in new map');
                 // this means we don't have the mapping for a sensor and it's not in postgres
                 // send error message to apiary if message not already sent
                 send_error(obs.sensor, 'does_not_exist', null);
-                // banish observation to the 'Island of Misfit Values'
-                redshift_insert(obs, true);
+                insert_emit(obs);
             }
             else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-                log.info('IN PARSE_INSERT_EMIT:ELSE IF');
                 log.info('invalid keys in new map');
                 // this means there is an unknown or faulty key being sent from beehive
                 // or the types of this observation cannot be correctly coerced
                 // send error message to apiary if message not already sent
                 send_error(obs.sensor, 'invalid_key',
                     {unknown_keys: invalid_keys(obs), coercion_errors: coerce_types(obs).errors});
-                // banish observation to the 'Island of Misfit Values', the unknown_feature table
-                redshift_insert(obs, true);
+                insert_emit(obs);
             }
             else {
-                log.info('IN PARSE_INSERT_EMIT:ELSE');
                 log.info('new map fixed everything');
                 // updating the map fixed the discrepancy
                 // send resolve message if sensor in blacklist
@@ -86,16 +80,15 @@ var parse_insert_emit = function (obs) {
                 }, function (err) {
                     log.error(err)
                 });
-                redshift_insert(coerce_types(obs).result, false);
+                insert_emit(obs);
             }
         }, function (err) {
             log.error(err)
         })
     }
     else {
-        log.info('IN PARSE_INSERT_EMIT:ELSE');
         // checks show that the mapping will work to input values into the database - go for it
-        redshift_insert(coerce_types(obs).result, false);
+        insert_emit(obs);
     }
 };
 
@@ -195,7 +188,9 @@ function coerce_types(obs) {
                     obs.data[key] = parseInt(obs.data[key]);
                 }
             }
-            else if (type_map[feature][property] == 'FLOAT' || type_map[feature][property] == 'DOUBLE') {
+            else if (type_map[feature][property] == 'FLOAT' ||
+                type_map[feature][property] == 'DOUBLE' ||
+                type_map[feature][property] == 'DOUBLE PRECISION') {
                 if (isNaN(Number(obs.data[key]))) {
                     errors[key] = obs.data[key];
                 }
@@ -228,17 +223,13 @@ function coerce_types(obs) {
 }
 
 /**
- * inserts observation into redshift
+ * inserts observation into redshift and emits to socket
  *
  * @param {Object} obs = observation
- * @param {boolean} misfit = true if FoI table cannot be found then value array must be stored as a string
- * in the 'unknown_feature' table (AKA the 'Island of Misfit Values')
  */
-function redshift_insert(obs, misfit) {
-    // TODO: get rid of mistfit, replace with (!(obs.sensor in map) || (obs.sensor in map && (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0)))
-    log.info('IN REDSHIFT_INSERT');
-        if (misfit) {
-            log.info('IN REDSHIFT_INSERT:IF');
+function insert_emit(obs) {
+    log.info('IN insert_emit');
+        if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
             // split obs into one copy containing all valid keys, one copy containing all invalid keys
             // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
             var misfit_obs = JSON.parse(JSON.stringify(obs));
@@ -257,11 +248,11 @@ function redshift_insert(obs, misfit) {
                 }
             });
             if (Object.keys(obs.data).length > 0) {
-                redshift_insert(coerce_types(obs).result, false);
+                insert_emit(obs);
             }
         }
         else {
-            log.info('IN REDSHIFT_INSERT:ELSE');
+            obs = coerce_types(obs).result;
             var all_features = [];
             Object.keys(obs.data).forEach(function (key) {
                 var feature = map[obs.sensor][key].split('.')[0];
@@ -304,6 +295,7 @@ function misfit_query_text(obs) {
  * @param {Object} obs
  * @param {String} feature
  * @return {String} query_text
+ * TODO: make sure this works for all types
  */
 function feature_query_text(obs, feature) {
     var query_text = util.format("INSERT INTO %s (node_id, datetime, meta_id, sensor, ", feature.toLowerCase());
@@ -455,4 +447,4 @@ function send_resolve(sensor) {
     blacklist.splice(blacklist.indexOf(sensor), 1)
 }
 
-module.exports.parse_insert_emit = parse_insert_emit;
+module.exports.parse_data = parse_data;
