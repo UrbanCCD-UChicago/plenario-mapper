@@ -1,7 +1,9 @@
 /**
  * $ npm install nodeunit -g
  *
- * $ nodeunit tests.js
+ * $ node ../configure_tests.js setup
+ * $ nodeunit database_tests.js
+ * $ node ../configure_tests.js teardown
  */
 var rewire = require('rewire');
 var mapper = rewire('../app/mapper');
@@ -33,8 +35,8 @@ var rs_pool = new pg.Pool(rs_config);
 // test update_map
 exports.update_map = function (test) {
     mapper.__set__('pg_pool', pg_pool);
-    mapper.__get__('update_map')().then(function (map) {
-        test.ok(_.isEqual(map,
+    mapper.__get__('update_map')().then(function () {
+        test.ok(_.isEqual(mapper.__get__('map'),
             {
                 htu21d: {
                     Temp: "temperature.temperature",
@@ -44,6 +46,12 @@ exports.update_map = function (test) {
                     X: "magnetic_field.x",
                     Y: "magnetic_field.y",
                     Z: "magnetic_field.z"
+                },
+                camera: {
+                    standing_water: "computer_vision.standing_water",
+                    cloud_type: "computer_vision.cloud_type",
+                    num_pedestrians: "computer_vision.num_pedestrians",
+                    traffic_density: "computer_vision.traffic_density"
                 }
             }));
         test.done();
@@ -55,8 +63,8 @@ exports.update_map = function (test) {
 // test update_type_map
 exports.update_type_map = function (test) {
     mapper.__set__('pg_pool', pg_pool);
-    mapper.__get__('update_type_map')().then(function (map) {
-        test.ok(_.isEqual(map,
+    mapper.__get__('update_type_map')().then(function () {
+        test.ok(_.isEqual(mapper.__get__('type_map'),
             {
                 temperature: {
                     temperature: 'FLOAT'
@@ -68,6 +76,12 @@ exports.update_type_map = function (test) {
                     x: 'FLOAT',
                     y: 'FLOAT',
                     z: 'FLOAT'
+                },
+                computer_vision: {
+                    standing_water: 'BOOL',
+                    cloud_type: 'VARCHAR',
+                    num_pedestrians: 'INTEGER',
+                    traffic_density: 'FLOAT'
                 }
             }));
         test.done();
@@ -76,8 +90,11 @@ exports.update_type_map = function (test) {
     });
 };
 
-// test inserting into redshift and emitting to the socket
-exports.parse_insert_emit = function (test) {
+// test parsing data inserting into redshift and emitting to the socket
+// the whole shabang - the complete rigmarole - tip to tail - soup to nuts
+exports.parse_data = function (test) {
+    // mapper.__set__('map', {});
+    // mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__set__('rs_pool', rs_pool);
     mapper.__set__('socket', require('socket.io-client')('http://localhost:8081/'));
@@ -91,6 +108,12 @@ exports.parse_insert_emit = function (test) {
             X: "magnetic_field.x",
             Y: "magnetic_field.y",
             Z: "magnetic_field.z"
+        },
+        camera: {
+            standing_water: "computer_vision.standing_water",
+            cloud_type: "computer_vision.cloud_type",
+            num_pedestrians: "computer_vision.num_pedestrians",
+            traffic_density: "computer_vision.traffic_density"
         }
     });
     mapper.__set__('type_map', {
@@ -104,6 +127,12 @@ exports.parse_insert_emit = function (test) {
             x: 'FLOAT',
             y: 'FLOAT',
             z: 'FLOAT'
+        },
+        computer_vision: {
+            standing_water: 'BOOL',
+            cloud_type: 'VARCHAR',
+            num_pedestrians: 'INTEGER',
+            traffic_density: 'FLOAT'
         }
     });
 
@@ -175,6 +204,19 @@ exports.parse_insert_emit = function (test) {
             intensity: 90
         }
     };
+    // all types, everything valid
+    var obs7 = {
+        node_id: "007",
+        meta_id: 23,
+        datetime: "2017-01-01T00:00:00",
+        sensor: "camera",
+        data: {
+            standing_water: true,
+            cloud_type: "cumulonimbus",
+            num_pedestrians: 11,
+            traffic_density: .22
+        }
+    };
 
     var http = require('http');
     var express = require('express');
@@ -207,23 +249,32 @@ exports.parse_insert_emit = function (test) {
             else if (data.node_id == '004') {
                 test.ok(_.isEqual(data.results, { y: 32.11, z: 90.92 }));
             }
+            else if (data.node_id == '007') {
+                test.ok(_.isEqual(data.results, {
+                    standing_water: true,
+                    cloud_type: "cumulonimbus",
+                    num_pedestrians: 11,
+                    traffic_density: .22
+                }));
+            }
             else {
                 test.ok(false);
             }
         })
     });
 
-    var parse_insert_emit = mapper.__get__('parse_insert_emit');
-    parse_insert_emit(obs1);
-    parse_insert_emit(obs2);
-    parse_insert_emit(obs3);
-    parse_insert_emit(obs4);
-    parse_insert_emit(obs5);
-    parse_insert_emit(obs6);
+    var parse_data = mapper.__get__('parse_data');
+    parse_data(obs1);
+    parse_data(obs2);
+    parse_data(obs3);
+    parse_data(obs4);
+    parse_data(obs5);
+    parse_data(obs6);
+    parse_data(obs7);
 
     setTimeout(function () {
-        test.equals(data_count, 5);
-    }, 3000);
+        test.equals(data_count, 6);
+    }, 5000);
 
     setTimeout(function () {
         rs_pool.query("SELECT * FROM temperature WHERE node_id = '001';", function (err, result) {
@@ -274,12 +325,20 @@ exports.parse_insert_emit = function (test) {
             test.equals(result.rows[0].data, JSON.stringify({intensity: 90}));
             test.equals(result.rows[0].sensor, "wubdb89");
         });
+
+        rs_pool.query("SELECT * FROM computer_vision WHERE node_id = '007';", function (err, result) {
+            if (err) throw err;
+            test.equals(result.rows[0].standing_water, true);
+            test.equals(result.rows[0].cloud_type, 'cumulonimbus');
+            test.equals(result.rows[0].num_pedestrians, 11);
+            test.equals(result.rows[0].traffic_density, .22);
+        });
     }, 3000);
 
     // tear down so that test doesn't run forever
     setTimeout(function () {
         server.close();
         test.done();
-    }, 10000);
+    }, 5000);
 };
 
