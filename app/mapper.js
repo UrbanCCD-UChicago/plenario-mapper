@@ -172,6 +172,13 @@ function update_type_map() {
  */
 function coerce_types(obs) {
     log.info('IN COERCE_TYPES');
+    // the first time parse_data runs, it will try to run coerce_types with an empty map, which will throw errors
+    if (Object.keys(type_map).length == 0) {
+        update_type_map().then( function (new_type_map) {
+            type_map = new_type_map;
+            return coerce_types(obs)
+        })
+    }
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
@@ -210,6 +217,9 @@ function coerce_types(obs) {
                 else {
                     errors[key] = obs.data[key];
                 }
+            }
+            else {
+                log.error('unrecognized type ' + type_map[feature][property]);
             }
         }
     });
