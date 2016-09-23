@@ -25,9 +25,7 @@ env:
 install:
 - npm install
 script:
-- node configure_tests.js setup
 - npm test
-- node configure_tests.js teardown
 deploy:
   provider: elasticbeanstalk
   access_key_id: AKIAIK5AQSFJXZVPPUOQ
