@@ -94,7 +94,7 @@ exports.update_type_map = function (test) {
 
 // test parsing data, inserting into redshift, emitting to the socket, and sending errors to apiary
 // the whole shabang - the complete rigmarole - tip to tail - soup to nuts
-exports.parse_data = function (test) {
+var parse_data = function (test) {
     mapper.__set__('map', {});
     mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
