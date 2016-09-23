@@ -34,6 +34,7 @@ var rs_pool = new pg.Pool(rs_config);
 
 // test update_map
 exports.update_map = function (test) {
+    mapper.__set__('map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__get__('update_map')().then(function () {
         test.ok(_.isEqual(mapper.__get__('map'),
@@ -62,6 +63,7 @@ exports.update_map = function (test) {
 
 // test update_type_map
 exports.update_type_map = function (test) {
+    mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__get__('update_type_map')().then(function () {
         test.ok(_.isEqual(mapper.__get__('type_map'),
