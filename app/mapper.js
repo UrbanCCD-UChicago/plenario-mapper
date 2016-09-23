@@ -166,7 +166,7 @@ function update_type_map() {
  *     { coerced obs },
  *   errors:
  *   { Temp: true }
- * }
+ * } 
  */
 function coerce_types(obs) {
     // log.info('IN COERCE_TYPES');
