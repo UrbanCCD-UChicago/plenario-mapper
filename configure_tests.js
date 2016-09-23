@@ -148,5 +148,5 @@ else if (process.argv[2] == 'teardown') {
     });
 }
 else {
-    throw 'invalid argument - must supply either "setup" or "teardown"';
+    console.log('invalid argument - must supply either "setup" or "teardown"');
 }
