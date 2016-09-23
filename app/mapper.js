@@ -39,7 +39,7 @@ var blacklist = [];
  *
  * @param {Object} obs = observation
  * in format:
- * { node_id: "00A",
+ * { node_id: "00a",
  *  meta_id: 23,
  *  datetime: "2016-08-05T00:00:08.246000",
  *  sensor: "HTU21D",
@@ -48,6 +48,15 @@ var blacklist = [];
  */
 var parse_data = function (obs) {
     // log.info('IN PARSE_DATA');
+    // put all nodes, sensors, and keys to lower case for internal comparisons
+    obs.node_id = obs.node_id.toLowerCase();
+    obs.sensor = obs.sensor.toLowerCase();
+    Object.keys(obs.data).forEach(function (key) {
+        if (key != key.toLowerCase()) {
+            obs.data[key.toLowerCase()] = obs.data[key];
+            delete obs.data[key];
+        }
+    });
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
     // the Object.keys(type_map).length == 0 catch prevents coerce_types from running with an empty type_map,
     // which would throw TypeErrors
@@ -99,10 +108,10 @@ var parse_data = function (obs) {
  *
  * @return {promise} yields map on fulfillment
  * in format:
- * { TMP112: { Temperature: 'temperature.temperature' },
- * BMP340: { Temp: 'temperature.temperature', RelHum:'humidity.humidity' },
- * UBQ120: { x: 'magnetic_field.X', y: 'magnetic_field.Y', z: 'magnetic_field.Z' },
- * PRE450: { Atm_Pressure: 'atmospheric_pressure.pressure' } }
+ * { tmp112: { temperature: 'temperature.temperature' },
+ * bmp340: { temp: 'temperature.temperature', relhum:'humidity.humidity' },
+ * ubq120: { x: 'magnetic_field.x', y: 'magnetic_field.x', z: 'magnetic_field.x' },
+ * pre450: { atm_pressure: 'atmospheric_pressure.pressure' } }
  *
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
@@ -111,11 +120,11 @@ function update_map() {
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
             if (err) {
-                reject('error running query in update_map ', err);
+                reject('error running query in update_map ' + err);
             }
             var new_map = {};
             for (var i = 0; i < result.rows.length; i++) {
-                new_map[result.rows[i].name] = result.rows[i].observed_properties;
+                new_map[result.rows[i].name.toLowerCase()] = JSON.parse(JSON.stringify(result.rows[i].observed_properties).toLowerCase());
             }
             map = new_map;
             fulfill();
@@ -129,8 +138,8 @@ function update_map() {
  *
  * @return {promise} yields map on fulfillment
  * in format:
- * { temperature: { temperature: 'DOUBLE PRECISION' },
- * magnetic_field: { x: 'DOUBLE PRECISION', y:'DOUBLE PRECISION', z:'DOUBLE PRECISION' } }
+ * { temperature: { temperature: 'FLOAT' },
+ * magnetic_field: { x: 'FLOAT', y:'FLOAT', z:'FLOAT' } }
  *
  * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
  */
@@ -139,16 +148,16 @@ function update_type_map() {
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
             if (err) {
-                reject('error running query in update_type_map ', err);
+                reject('error running query in update_type_map ' + err);
             }
             var new_type_map = {};
             for (var i = 0; i < result.rows.length; i++) {
                 var feature_type_map = {};
                 for (var j = 0; j < result.rows[i].observed_properties.length; j++) {
-                    feature_type_map[result.rows[i].observed_properties[j].name] =
-                        result.rows[i].observed_properties[j].type.toUpperCase();
+                    feature_type_map[result.rows[i].observed_properties[j].name.toLowerCase()] =
+                        result.rows[i].observed_properties[j].type.toLowerCase();
                 }
-                new_type_map[result.rows[i].name] = feature_type_map;
+                new_type_map[result.rows[i].name.toLowerCase()] = feature_type_map;
             }
             type_map = new_type_map;
             fulfill();
@@ -166,7 +175,7 @@ function update_type_map() {
  *     { coerced obs },
  *   errors:
  *   { Temp: true }
- * } 
+ * }
  */
 function coerce_types(obs) {
     // log.info('IN COERCE_TYPES');
@@ -176,10 +185,10 @@ function coerce_types(obs) {
             var feature = map[obs.sensor][key].split('.')[0];
             var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
             var type = type_map[feature][property];
-            if (type == 'VARCHAR' || type == 'STRING') {
+            if (type == 'varchar' || type == 'string') {
                 obs.data[key] = String(obs.data[key]);
             }
-            else if (type == 'INTEGER' || type == 'INT') {
+            else if (type == 'integer' || type == 'int') {
                 if (isNaN(parseInt(obs.data[key]))) {
                     errors[key] = obs.data[key];
                 }
@@ -187,7 +196,7 @@ function coerce_types(obs) {
                     obs.data[key] = parseInt(obs.data[key]);
                 }
             }
-            else if (type == 'FLOAT' || type == 'DOUBLE' || type == 'DOUBLE PRECISION') {
+            else if (type == 'float' || type == 'double' || type == 'double precision') {
                 if (isNaN(Number(obs.data[key]))) {
                     errors[key] = obs.data[key];
                 }
@@ -195,7 +204,7 @@ function coerce_types(obs) {
                     obs.data[key] = Number(obs.data[key]);
                 }
             }
-            else if (type == 'BOOL' || type == 'BOOLEAN') {
+            else if (type == 'bool' || type == 'boolean') {
                 if (obs.data[key] == '1' ||
                     (typeof obs.data[key] == 'string' && obs.data[key].toUpperCase() == 'TRUE') ||
                     obs.data[key] == true) {
@@ -317,10 +326,10 @@ function feature_query_text(obs, feature) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
             var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
             var type = type_map[feature][property];
-            if (type == 'VARCHAR' || type == 'STRING') {
+            if (type == 'varchar' || type == 'string') {
                 query_text += ', ' + "'" + obs.data[key] + "'";
             }
-            else if (type == 'BOOL' || type == 'BOOLEAN') {
+            else if (type == 'bool' || type == 'boolean') {
                 query_text += ', ' + String(obs.data[key]).toUpperCase();
             }
             else {
@@ -364,8 +373,8 @@ function format_obs(obs) {
         if (features.indexOf(feature) < 0) {
             obs_list.push({
                 feature_of_interest: feature,
-                node_id: obs.node_id.toLowerCase(),
-                sensor: obs.sensor.toLowerCase(),
+                node_id: obs.node_id,
+                sensor: obs.sensor,
                 datetime: obs.datetime,
                 results: {}
             });
@@ -402,8 +411,8 @@ function invalid_keys(obs) {
 function send_error(sensor, message_type, args) {
     var message;
     if (message_type == 'does_not_exist') {
-        message = 'Sensor ' + sensor + ' not found in sensor metadata. ' +
-            'Please add this sensor.';
+        message = [ 'Sensor ' + sensor + ' not found in sensor metadata. ' +
+            'Please add this sensor.' ];
     }
     else if (message_type == 'invalid_key') {
         message = [];
@@ -416,7 +425,7 @@ function send_error(sensor, message_type, args) {
                 var feature = map[sensor][key].split('.')[0];
                 var property = map[sensor][key].split(/\.(.+)?/)[1];
                 message.push('Property ' + property + ' of sensor ' + sensor + ' expected type ' + type_map[feature][property] +
-                    ' and could not coerce value ' + args.coercion_errors[key] + ' of type ' + typeof args.coercion_errors[key])
+                    ' and could not correctly coerce value ' + args.coercion_errors[key] + ' of type ' + typeof args.coercion_errors[key])
             });
         }
     }
@@ -428,9 +437,7 @@ function send_error(sensor, message_type, args) {
                     name: sensor,
                     value: message
                 }
-            }, function (err) {
-                log.info({name: sensor,
-                    value: message});
+            }, function (err, response, body) {
                 if (err) {
                     log.error(err);
                 }
@@ -451,9 +458,7 @@ function send_resolve(sensor) {
                 name: sensor,
                 value: "resolve"
             }
-        }, function (err) {
-            log.info({name: sensor,
-                value: "resolve"});
+        }, function (err, response, body) {
             if (err) {
                 log.error(err);
             }
