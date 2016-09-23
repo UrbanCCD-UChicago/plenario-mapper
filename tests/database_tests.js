@@ -93,48 +93,11 @@ exports.update_type_map = function (test) {
 // test parsing data inserting into redshift and emitting to the socket
 // the whole shabang - the complete rigmarole - tip to tail - soup to nuts
 exports.parse_data = function (test) {
-    // mapper.__set__('map', {});
-    // mapper.__set__('type_map', {});
+    mapper.__set__('map', {});
+    mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__set__('rs_pool', rs_pool);
     mapper.__set__('socket', require('socket.io-client')('http://localhost:8081/'));
-
-    mapper.__set__('map', {
-        htu21d: {
-            Temp: "temperature.temperature",
-            Humidity: "relative_humidity.humidity"
-        },
-        hmc5883l: {
-            X: "magnetic_field.x",
-            Y: "magnetic_field.y",
-            Z: "magnetic_field.z"
-        },
-        camera: {
-            standing_water: "computer_vision.standing_water",
-            cloud_type: "computer_vision.cloud_type",
-            num_pedestrians: "computer_vision.num_pedestrians",
-            traffic_density: "computer_vision.traffic_density"
-        }
-    });
-    mapper.__set__('type_map', {
-        temperature: {
-            temperature: 'FLOAT'
-        },
-        relative_humidity: {
-            humidity: 'FLOAT'
-        },
-        magnetic_field: {
-            x: 'FLOAT',
-            y: 'FLOAT',
-            z: 'FLOAT'
-        },
-        computer_vision: {
-            standing_water: 'BOOL',
-            cloud_type: 'VARCHAR',
-            num_pedestrians: 'INTEGER',
-            traffic_density: 'FLOAT'
-        }
-    });
 
     // all valid keys
     var obs1 = {
