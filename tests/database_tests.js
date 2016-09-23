@@ -12,7 +12,7 @@ var pg = require('pg');
 
 var pg_config = {
     user: process.env.DB_USER,
-    database: process.env.DB_NAME,
+    database: 'sensor_test',
     password: process.env.DB_PASSWORD,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -21,7 +21,7 @@ var pg_config = {
 };
 var rs_config = {
     user: process.env.RS_USER,
-    database: process.env.RS_NAME,
+    database: 'sensor_test',
     password: process.env.RS_PASSWORD,
     host: process.env.RS_HOST,
     port: process.env.RS_PORT,
@@ -34,6 +34,7 @@ var rs_pool = new pg.Pool(rs_config);
 
 // test update_map
 exports.update_map = function (test) {
+    mapper.__set__('map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__get__('update_map')().then(function () {
         test.ok(_.isEqual(mapper.__get__('map'),
@@ -62,6 +63,7 @@ exports.update_map = function (test) {
 
 // test update_type_map
 exports.update_type_map = function (test) {
+    mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__get__('update_type_map')().then(function () {
         test.ok(_.isEqual(mapper.__get__('type_map'),
