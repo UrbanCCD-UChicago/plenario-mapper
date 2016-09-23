@@ -17,7 +17,7 @@ var pg_config = {
     max: 10,
     idleTimeoutMillis: 30000
 };
-var rs_config = { 
+var rs_config = {
     user: process.env.RS_USER,
     database: process.env.RS_NAME,
     password: process.env.RS_PASSWORD,
@@ -47,44 +47,46 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_data = function (obs) {
-    log.info('IN PARSE_DATA');
+    // log.info('IN PARSE_DATA');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
-    if (!(obs.sensor in map) ||
-        (obs.sensor in map && invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0)) {
+    // the Object.keys(type_map).length == 0 catch prevents coerce_types from running with an empty type_map,
+    // which would throw TypeErrors
+    if (invalid_keys(obs).length > 0 || Object.keys(type_map).length == 0 ||
+        (Object.keys(type_map).length > 0 && Object.keys(coerce_types(obs).errors).length > 0)) {
         log.info('discrepancy in map');
         update_map().then(function () {
-            log.info('map updated');
-            if (!(obs.sensor in map)) {
-                log.info('sensor not in new map');
-                // this means we don't have the mapping for a sensor and it's not in postgres
-                // send error message to apiary if message not already sent
-                send_error(obs.sensor, 'does_not_exist', null);
-                insert_emit(obs);
-            }
-            else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-                log.info('invalid keys in new map');
-                // this means there is an unknown or faulty key being sent from beehive
-                // or the types of this observation cannot be correctly coerced
-                // send error message to apiary if message not already sent
-                send_error(obs.sensor, 'invalid_key',
-                    {unknown_keys: invalid_keys(obs), coercion_errors: coerce_types(obs).errors});
-                insert_emit(obs);
-            }
-            else {
-                log.info('new map fixed everything');
-                // updating the map fixed the discrepancy
-                // send resolve message if sensor in blacklist
-                send_resolve(obs.sensor);
-                update_type_map().then(function () {
-                    log.info('type_map updated');
+            update_type_map().then(function () {
+                log.info('map updated');
+                if (!(obs.sensor in map)) {
+                    log.info('sensor not in new map');
+                    // this means we don't have the mapping for a sensor and it's not in postgres
+                    // send error message to apiary if message not already sent
+                    send_error(obs.sensor, 'does_not_exist', null);
                     insert_emit(obs);
-                }, function (err) {
-                    log.error(err)
-                });
-            }
+                }
+                else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
+                    log.info('invalid keys in new map');
+                    // this means there is an unknown or faulty key being sent from beehive
+                    // or the types of this observation cannot be correctly coerced
+                    // send error message to apiary if message not already sent
+                    send_error(obs.sensor, 'invalid_key',
+                        {unknown_keys: invalid_keys(obs), coercion_errors: coerce_types(obs).errors});
+                    insert_emit(obs);
+                }
+                else {
+                    log.info('new map fixed everything');
+                    // updating the map fixed the discrepancy
+                    // send resolve message if sensor in blacklist
+                    send_resolve(obs.sensor);
+                    insert_emit(obs);
+                }
+            }, function (err) {
+                log.error(err)
+            })
         }, function (err) {
             log.error(err)
         })
+
     }
     else {
         // checks show that the mapping will work to input values into the database - go for it
@@ -105,7 +107,7 @@ var parse_data = function (obs) {
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
 function update_map() {
-    log.info('IN UPDATE_MAP');
+    // log.info('IN UPDATE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
             if (err) {
@@ -115,7 +117,6 @@ function update_map() {
             for (var i = 0; i < result.rows.length; i++) {
                 new_map[result.rows[i].name] = result.rows[i].observed_properties;
             }
-            log.info(new_map);
             map = new_map;
             fulfill();
         });
@@ -128,12 +129,13 @@ function update_map() {
  *
  * @return {promise} yields map on fulfillment
  * in format:
- * coerce
+ * { temperature: { temperature: 'DOUBLE PRECISION' },
+ * magnetic_field: { x: 'DOUBLE PRECISION', y:'DOUBLE PRECISION', z:'DOUBLE PRECISION' } }
  *
  * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
  */
 function update_type_map() {
-    log.info('IN UPDATE_TYPE_MAP');
+    // log.info('IN UPDATE_TYPE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
             if (err) {
@@ -148,7 +150,6 @@ function update_type_map() {
                 }
                 new_type_map[result.rows[i].name] = feature_type_map;
             }
-            log.info(new_type_map);
             type_map = new_type_map;
             fulfill();
         });
@@ -168,17 +169,7 @@ function update_type_map() {
  * }
  */
 function coerce_types(obs) {
-    log.info('IN COERCE_TYPES');
-    // the first time parse_data runs, it will try to run coerce_types with an empty map, which will throw errors
-    // this populates the type_map if that's the case
-    if (Object.keys(type_map).length == 0) {
-        log.info('empty type_map');
-        update_type_map().then(function () {
-            log.info('type_map updated');
-            return coerce_types(obs)
-        })
-    }
-
+    // log.info('IN COERCE_TYPES');
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
@@ -228,7 +219,6 @@ function coerce_types(obs) {
             }
         }
     });
-    log.info({result: obs, errors: errors});
     return {result: obs, errors: errors}
 }
 
@@ -238,9 +228,9 @@ function coerce_types(obs) {
  * @param {Object} obs = observation
  */
 function insert_emit(obs) {
-    log.info('IN INSERT_EMIT');
-    if (!(obs.sensor in map) ||
-        (obs.sensor in map && invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0)) {
+    // log.info('IN INSERT_EMIT');
+    if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
+        // log.info('IN INSERT_EMIT:IF == MISFIT');
         // split obs into one copy containing all valid keys, one copy containing all invalid keys
         // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
         var misfit_obs = JSON.parse(JSON.stringify(obs));
@@ -263,6 +253,7 @@ function insert_emit(obs) {
         }
     }
     else {
+        // log.info('IN INSERT_EMIT:ELSE == VALID');
         obs = coerce_types(obs).result;
         var all_features = [];
         Object.keys(obs.data).forEach(function (key) {
@@ -282,8 +273,7 @@ function insert_emit(obs) {
         // emit salvageable data to socket
         var obs_list = format_obs(obs);
         for (var i = 0; i < obs_list.length; i++) {
-            log.info('EMITTING TO SOCKET: ');
-            log.info(obs_list[i]);
+            // log.info('EMITTING TO SOCKET');
             socket.emit('internal_data', obs_list[i]);
         }
     }
@@ -438,8 +428,9 @@ function send_error(sensor, message_type, args) {
                     name: sensor,
                     value: message
                 }
-            }, function (err, response, body) {
-                log.info(body);
+            }, function (err) {
+                log.info({name: sensor,
+                    value: message});
                 if (err) {
                     log.error(err);
                 }
@@ -460,8 +451,9 @@ function send_resolve(sensor) {
                 name: sensor,
                 value: "resolve"
             }
-        }, function (err, response, body) {
-            log.info(body);
+        }, function (err) {
+            log.info({name: sensor,
+                value: "resolve"});
             if (err) {
                 log.error(err);
             }
