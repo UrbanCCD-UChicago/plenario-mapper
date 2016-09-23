@@ -3,7 +3,7 @@ var util = require('util');
 
 var pg_config = {
     user: process.env.DB_USER,
-    database: process.env.DB_NAME,
+    database: 'sensor_test',
     password: process.env.DB_PASSWORD,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -12,7 +12,7 @@ var pg_config = {
 };
 var rs_config = {
     user: process.env.RS_USER,
-    database: process.env.RS_NAME,
+    database: 'sensor_test',
     password: process.env.RS_PASSWORD,
     host: process.env.RS_HOST,
     port: process.env.RS_PORT,

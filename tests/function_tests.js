@@ -10,13 +10,13 @@ var _ = require('underscore');
 mapper.__set__('map',
     {
         htu21d: {
-            Temp: "temperature.temperature",
-            Humidity: "relative_humidity.humidity"
+            temp: "temperature.temperature",
+            humidity: "relative_humidity.humidity"
         },
         hmc5883l: {
-            X: "magnetic_field.x",
-            Y: "magnetic_field.y",
-            Z: "magnetic_field.z"
+            x: "magnetic_field.x",
+            y: "magnetic_field.y",
+            z: "magnetic_field.z"
         },
         camera: {
             standing_water: "computer_vision.standing_water",
@@ -29,21 +29,21 @@ mapper.__set__('map',
 mapper.__set__('type_map',
     {
         temperature: {
-            temperature: 'FLOAT'
+            temperature: 'float'
         },
         relative_humidity: {
-            humidity: 'FLOAT'
+            humidity: 'float'
         },
         magnetic_field: {
-            x: 'FLOAT',
-            y: 'FLOAT',
-            z: 'FLOAT'
+            x: 'float',
+            y: 'float',
+            z: 'float'
         },
         computer_vision: {
-            standing_water: 'BOOL',
-            cloud_type: 'VARCHAR',
-            num_pedestrians: 'INTEGER',
-            traffic_density: 'FLOAT'
+            standing_water: 'bool',
+            cloud_type: 'varchar',
+            num_pedestrians: 'integer',
+            traffic_density: 'float'
         }
     });
 
@@ -55,13 +55,13 @@ exports.misfit_query_text = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
         data: {
-            Temp: 37.91,
-            Humidity: 27.48
+            temp: 37.91,
+            humidity: 27.48
         }
     };
 
     test.equal(mapper.__get__('misfit_query_text')(obs), "INSERT INTO unknown_feature " +
-        "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', '{\"Temp\":37.91,\"Humidity\":27.48}');");
+        "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', '{\"temp\":37.91,\"humidity\":27.48}');");
     test.done();
 };
 
@@ -73,8 +73,8 @@ exports.feature_query_text = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
         data: {
-            Temp: 37.91,
-            Humidity: 27.48
+            temp: 37.91,
+            humidity: 27.48
         }
     };
     var obs2 = {
@@ -83,9 +83,9 @@ exports.feature_query_text = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
         data: {
-            X: 56.77,
-            Y: 32.11,
-            Z: 90.92
+            x: 56.77,
+            y: 32.11,
+            z: 90.92
         }
     };
     var obs3 = {
@@ -94,8 +94,8 @@ exports.feature_query_text = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
         data: {
-            Y: 32.11,
-            Z: 90.92
+            y: 32.11,
+            z: 90.92
         }
     };
     var obs4 = {
@@ -140,8 +140,8 @@ exports.format_obs = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
         data: {
-            Temp: 37.91,
-            Humidity: 27.48
+            temp: 37.91,
+            humidity: 27.48
         }
     };
     var obs2 = {
@@ -150,9 +150,9 @@ exports.format_obs = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
         data: {
-            X: 56.77,
-            Y: 32.11,
-            Z: 90.92
+            x: 56.77,
+            y: 32.11,
+            z: 90.92
         }
     };
     var obs3 = {
@@ -378,8 +378,8 @@ exports.invalid_keys = function (test) {
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
         data: {
-            Temp: 37.91,
-            Humidity: 27.48
+            temp: 37.91,
+            humidity: 27.48
         }
     };
     // invalid keys x1 and y1
@@ -391,7 +391,7 @@ exports.invalid_keys = function (test) {
         data: {
             x1: 56.77,
             y1: 32.11,
-            Z: 90.92
+            z: 90.92
         }
     };
 

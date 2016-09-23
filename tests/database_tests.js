@@ -39,13 +39,13 @@ exports.update_map = function (test) {
         test.ok(_.isEqual(mapper.__get__('map'),
             {
                 htu21d: {
-                    Temp: "temperature.temperature",
-                    Humidity: "relative_humidity.humidity"
+                    temp: "temperature.temperature",
+                    humidity: "relative_humidity.humidity"
                 },
                 hmc5883l: {
-                    X: "magnetic_field.x",
-                    Y: "magnetic_field.y",
-                    Z: "magnetic_field.z"
+                    x: "magnetic_field.x",
+                    y: "magnetic_field.y",
+                    z: "magnetic_field.z"
                 },
                 camera: {
                     standing_water: "computer_vision.standing_water",
@@ -67,21 +67,21 @@ exports.update_type_map = function (test) {
         test.ok(_.isEqual(mapper.__get__('type_map'),
             {
                 temperature: {
-                    temperature: 'FLOAT'
+                    temperature: 'float'
                 },
                 relative_humidity: {
-                    humidity: 'FLOAT'
+                    humidity: 'float'
                 },
                 magnetic_field: {
-                    x: 'FLOAT',
-                    y: 'FLOAT',
-                    z: 'FLOAT'
+                    x: 'float',
+                    y: 'float',
+                    z: 'float'
                 },
                 computer_vision: {
-                    standing_water: 'BOOL',
-                    cloud_type: 'VARCHAR',
-                    num_pedestrians: 'INTEGER',
-                    traffic_density: 'FLOAT'
+                    standing_water: 'bool',
+                    cloud_type: 'varchar',
+                    num_pedestrians: 'integer',
+                    traffic_density: 'float'
                 }
             }));
         test.done();
@@ -90,7 +90,7 @@ exports.update_type_map = function (test) {
     });
 };
 
-// test parsing data inserting into redshift and emitting to the socket
+// test parsing data, inserting into redshift, emitting to the socket, and sending errors to apiary
 // the whole shabang - the complete rigmarole - tip to tail - soup to nuts
 exports.parse_data = function (test) {
     mapper.__set__('map', {});
@@ -150,11 +150,10 @@ exports.parse_data = function (test) {
         node_id: "005",
         meta_id: 23,
         datetime: "2017-01-01T00:00:00",
-        sensor: "hmc5883l",
+        sensor: "htu21d",
         data: {
-            X: "high",
-            y1: 32.11,
-            z1: 90.92
+            Temp: "high",
+            Humdrum: 27.48
         }
     };
     // unknown sensor
@@ -184,14 +183,72 @@ exports.parse_data = function (test) {
     var http = require('http');
     var express = require('express');
     var app = express();
-    var server = http.createServer(app);
-    var io = require('socket.io')(server);
+    var bodyParser = require('body-parser');
+    app.use(bodyParser.json());
 
-    server.listen(8081);
+    // mapper will send post requests to 8080, app will listen for requests on 8080
+    var apiary_server = http.createServer(app);
+    apiary_server.listen(8080);
+    process.env['PLENARIO_HOST'] = 'localhost:8080';
+    // keep track of sockets so you can destroy them all during cleanup
+    var sockets = [];
+    apiary_server.on('connection', function(socket) {
+        sockets.push(socket);
+    });
 
+    // socket server listens on 8081
+    var socket_server = http.createServer(app);
+    socket_server.listen(8081);
+
+    var error_count = 0;
+    var resolve_count = 0;
+    app.post('/apiary/send_message', function (req, res) {
+        if (req.body.name == 'htu21d') {
+            if (req.body.value == 'resolve') {
+                resolve_count++;
+            }
+            else {
+                test.equals(req.body.value.length, 2);
+                error_count += 2;
+            }
+        }
+        else if (req.body.name == 'hmc5883l') {
+            if (req.body.value == 'resolve') {
+                resolve_count++;
+            }
+            else {
+                test.equals(req.body.value.length, 1);
+                test.ok(req.body.value[0].includes('unknown key'));
+                error_count++;
+            }
+        }
+        else if (req.body.name == 'wubdb89') {
+            if (req.body.value == 'resolve') {
+                test.ok(false);
+            }
+            else {
+                test.equals(req.body.value.length, 1);
+                test.ok(req.body.value[0].includes('not found'));
+                error_count++;
+            }
+        }
+        else if (req.body.name == 'camera') {
+            if (req.body.value == 'resolve') {
+                resolve_count++;
+            }
+            else {
+                test.ok(false);
+            }
+        }
+        else {
+            test.ok(false);
+        }
+    });
+
+    var io = require('socket.io')(socket_server);
     var data_count = 0;
     io.on('connect', function (socket) {
-        // necessary for teardown
+        // necessary for cleanup so test doesn't run forever
         setTimeout(function () {
             socket.disconnect();
         }, 5000);
@@ -237,6 +294,8 @@ exports.parse_data = function (test) {
 
     setTimeout(function () {
         test.equals(data_count, 6);
+        test.equals(resolve_count, 3);
+        test.equals(error_count, 4);
     }, 5000);
 
     setTimeout(function () {
@@ -264,7 +323,7 @@ exports.parse_data = function (test) {
         });
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '003';", function (err, result) {
             if (err) throw err;
-            test.equals(result.rows[0].data, JSON.stringify({x1: 56.77, y1: 32.11}));
+            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {x1: 56.77, y1: 32.11}));
         });
 
         rs_pool.query("SELECT * FROM magnetic_field WHERE node_id = '004';", function (err, result) {
@@ -275,17 +334,17 @@ exports.parse_data = function (test) {
         });
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '004';", function (err, result) {
             if (err) throw err;
-            test.equals(result.rows[0].data, JSON.stringify({X: "high"}));
+            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {x: "high"}));
         });
 
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '005';", function (err, result) {
             if (err) throw err;
-            test.equals(result.rows[0].data, JSON.stringify({X: "high", y1: 32.11, z1: 90.92}));
+            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {temp: "high", humdrum: 27.48}));
         });
 
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '006';", function (err, result) {
             if (err) throw err;
-            test.equals(result.rows[0].data, JSON.stringify({intensity: 90}));
+            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {intensity: 90}));
             test.equals(result.rows[0].sensor, "wubdb89");
         });
 
@@ -298,9 +357,13 @@ exports.parse_data = function (test) {
         });
     }, 3000);
 
-    // tear down so that test doesn't run forever
+    // clean up so that test doesn't run forever
     setTimeout(function () {
-        server.close();
+        socket_server.close();
+        apiary_server.close();
+        sockets.forEach(function(socket) {
+            socket.destroy();
+        });
         test.done();
     }, 5000);
 };
