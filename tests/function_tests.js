@@ -19,10 +19,10 @@ mapper.__set__('map',
             Z: "magnetic_field.z"
         },
         camera: {
-            standing_water: "cv.standing_water",
-            cloud_type: "cv.cloud_type",
-            num_pedestrians: "cv.num_pedestrians",
-            traffic_density: "cv.traffic_density"
+            standing_water: "computer_vision.standing_water",
+            cloud_type: "computer_vision.cloud_type",
+            num_pedestrians: "computer_vision.num_pedestrians",
+            traffic_density: "computer_vision.traffic_density"
         }
     });
 
@@ -39,7 +39,7 @@ mapper.__set__('type_map',
             y: 'FLOAT',
             z: 'FLOAT'
         },
-        cv: {
+        computer_vision: {
             standing_water: 'BOOL',
             cloud_type: 'VARCHAR',
             num_pedestrians: 'INTEGER',
@@ -98,6 +98,18 @@ exports.feature_query_text = function (test) {
             Z: 90.92
         }
     };
+    var obs4 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: true,
+            cloud_type: "cumulonimbus",
+            num_pedestrians: 13,
+            traffic_density: .44
+        }
+    };
 
     // split features
     test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'), "INSERT INTO temperature " +
@@ -114,6 +126,9 @@ exports.feature_query_text = function (test) {
     test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'), "INSERT INTO magnetic_field " +
         "(node_id, datetime, meta_id, sensor, y, z) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 32.11, 90.92);");
+    test.equal(mapper.__get__('feature_query_text')(obs4, 'computer_vision'), "INSERT INTO computer_vision " +
+        "(node_id, datetime, meta_id, sensor, standing_water, cloud_type, num_pedestrians, traffic_density) " +
+        "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'camera', TRUE, 'cumulonimbus', 13, 0.44);");
     test.done();
 };
 
@@ -138,6 +153,18 @@ exports.format_obs = function (test) {
             X: 56.77,
             Y: 32.11,
             Z: 90.92
+        }
+    };
+    var obs3 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "camera",
+        data: {
+            standing_water: true,
+            cloud_type: "cumulonimbus",
+            num_pedestrians: 13,
+            traffic_density: .44
         }
     };
 
@@ -171,6 +198,20 @@ exports.format_obs = function (test) {
                 x: 56.77,
                 y: 32.11,
                 z: 90.92
+            }
+        }
+    ]));
+    test.ok(_.isEqual(mapper.__get__('format_obs')(obs3), [
+        {
+            node_id: "00a",
+            datetime: "2016-08-05T00:00:08.246000",
+            sensor: "camera",
+            feature_of_interest: "computer_vision",
+            results: {
+                standing_water: true,
+                cloud_type: "cumulonimbus",
+                num_pedestrians: 13,
+                traffic_density: .44
             }
         }
     ]));
@@ -288,9 +329,9 @@ exports.coerce_types = function (test) {
             }
         }, errors: {
             num_pedestrians: "true",
-            traffic_density:  "true"
-            }
-        }));
+            traffic_density: "true"
+        }
+    }));
 
     test.ok(_.isEqual(mapper.__get__('coerce_types')(obs4), {
         result: {
@@ -353,8 +394,8 @@ exports.invalid_keys = function (test) {
             Z: 90.92
         }
     };
-    
+
     test.ok(_.isEqual(mapper.__get__('invalid_keys')(obs1), []));
-    test.ok(_.isEqual(mapper.__get__('invalid_keys')(obs2), ['x1','y1']));
+    test.ok(_.isEqual(mapper.__get__('invalid_keys')(obs2), ['x1', 'y1']));
     test.done();
 };

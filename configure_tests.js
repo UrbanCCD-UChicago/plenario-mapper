@@ -26,118 +26,127 @@ var pg_pool = new pg.Pool(pg_config);
 if (process.argv[2] == 'setup') {
 
     // insert sensor metadata
-    pg_pool.connect(function (err, pg_client, done) {
-        if (err) error = err;
-        pg_client.query("INSERT INTO sensor__sensors VALUES ('htu21d', " +
-            "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\"}', '{}')", function (err) {
-            if (err) error = err;
-            pg_client.query("INSERT INTO sensor__sensors VALUES ('hmc5883l', " +
-                "'{\"X\": \"magnetic_field.x\", \"Y\": \"magnetic_field.y\", \"Z\": \"magnetic_field.z\"}', '{}')", function (err) {
-                if (err) throw err;
-                done();
-            });
-        });
+    pg_pool.query("INSERT INTO sensor__sensors VALUES ('htu21d', " +
+        "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\"}', '{}')", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("INSERT INTO sensor__sensors VALUES ('hmc5883l', " +
+        "'{\"X\": \"magnetic_field.x\", \"Y\": \"magnetic_field.y\", \"Z\": \"magnetic_field.z\"}', '{}')", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("INSERT INTO sensor__sensors VALUES ('camera', " +
+        "'{\"standing_water\": \"computer_vision.standing_water\", \"cloud_type\": \"computer_vision.cloud_type\", " +
+        "\"traffic_density\": \"computer_vision.traffic_density\", \"num_pedestrians\": \"computer_vision.num_pedestrians\"}', '{}')", function (err) {
+        if (err) throw err;
     });
 
     // insert feature_of_interest metadata
-    pg_pool.connect(function (err, pg_client, done) {
-        pg_client.query("INSERT INTO sensor__features_of_interest VALUES ('temperature', " +
-            "'[{\"name\": \"temperature\", \"type\": \"FLOAT\"}]')", function (err) {
-            if (err) throw err;
-            pg_client.query("INSERT INTO sensor__features_of_interest VALUES ('relative_humidity', " +
-                "'[{\"name\": \"humidity\", \"type\": \"FLOAT\"}]')", function (err) {
-                if (err) throw err;
-                pg_client.query("INSERT INTO sensor__features_of_interest VALUES ('magnetic_field', " +
-                    "'[{\"name\": \"x\", \"type\": \"FLOAT\"}, " +
-                    "{\"name\": \"y\", \"type\": \"FLOAT\"}, " +
-                    "{\"name\": \"z\", \"type\": \"FLOAT\"}]')", function (err) {
-                    if (err) throw err;
-                    done();
-                });
-            });
-        });
+    pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('temperature', " +
+        "'[{\"name\": \"temperature\", \"type\": \"FLOAT\"}]')", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('relative_humidity', " +
+        "'[{\"name\": \"humidity\", \"type\": \"FLOAT\"}]')", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('magnetic_field', " +
+        "'[{\"name\": \"x\", \"type\": \"FLOAT\"}, " +
+        "{\"name\": \"y\", \"type\": \"FLOAT\"}, " +
+        "{\"name\": \"z\", \"type\": \"FLOAT\"}]')", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('computer_vision', " +
+        "'[{\"name\": \"standing_water\", \"type\": \"BOOL\"}, " +
+        "{\"name\": \"cloud_type\", \"type\": \"VARCHAR\"}, " +
+        "{\"name\": \"traffic_density\", \"type\": \"FLOAT\"}, " +
+        "{\"name\": \"num_pedestrians\", \"type\": \"INTEGER\"}]')", function (err) {
+        if (err) throw err;
     });
 
     // create redshift tables
-    rs_pool.connect(function (err, rs_client, done) {
+    rs_pool.query('CREATE TABLE temperature (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"temperature" DOUBLE PRECISION, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
         if (err) throw err;
-        rs_client.query('CREATE TABLE temperature (' +
-            '"node_id" VARCHAR NOT NULL, ' +
-            'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
-            '"meta_id" DOUBLE PRECISION NOT NULL, ' +
-            '"sensor" VARCHAR NOT NULL, ' +
-            '"temperature" DOUBLE PRECISION, ' +
-            'PRIMARY KEY ("node_id", datetime)) ' +
-            'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
-            if (err) throw err;
-            rs_client.query('CREATE TABLE relative_humidity (' +
-                '"node_id" VARCHAR NOT NULL, ' +
-                'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
-                '"meta_id" DOUBLE PRECISION NOT NULL, ' +
-                '"sensor" VARCHAR NOT NULL, ' +
-                '"humidity" DOUBLE PRECISION, ' +
-                'PRIMARY KEY ("node_id", datetime)) ' +
-                'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
-                if (err) throw err;
-                rs_client.query('CREATE TABLE magnetic_field (' +
-                    '"node_id" VARCHAR NOT NULL, ' +
-                    'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
-                    '"meta_id" DOUBLE PRECISION NOT NULL, ' +
-                    '"sensor" VARCHAR NOT NULL, ' +
-                    '"x" DOUBLE PRECISION, ' +
-                    '"y" DOUBLE PRECISION, ' +
-                    '"z" DOUBLE PRECISION, ' +
-                    'PRIMARY KEY ("node_id", datetime)) ' +
-                    'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
-                    if (err) throw err;
-                    rs_client.query('CREATE TABLE unknown_feature (' +
-                        '"node_id" VARCHAR NOT NULL, ' +
-                        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
-                        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
-                        '"sensor" VARCHAR NOT NULL, ' +
-                        '"data" VARCHAR, ' +
-                        'PRIMARY KEY ("node_id", datetime)) ' +
-                        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
-                        if (err) throw err;
-                        done();
-                    });
-                });
-            });
-        });
+    });
+    rs_pool.query('CREATE TABLE relative_humidity (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"humidity" DOUBLE PRECISION, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('CREATE TABLE magnetic_field (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"x" DOUBLE PRECISION, ' +
+        '"y" DOUBLE PRECISION, ' +
+        '"z" DOUBLE PRECISION, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('CREATE TABLE computer_vision (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"standing_water" BOOLEAN, ' +
+        '"cloud_type" VARCHAR, ' +
+        '"num_pedestrians" INTEGER, ' +
+        '"traffic_density" DOUBLE PRECISION, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('CREATE TABLE unknown_feature (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"data" VARCHAR, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
+        if (err) throw err;
     });
 }
 else if (process.argv[2] == 'teardown') {
 
     // clear metadata tables
-    pg_pool.connect(function (err, pg_client, done) {
-        if (err) error = err;
-        pg_client.query("DELETE FROM sensor__sensors;", function (err) {
-            if (err) error = err;
-            pg_client.query("DELETE FROM sensor__features_of_interest", function (err) {
-                if (err) throw err;
-                done();
-            });
-        });
+    pg_pool.query("DELETE FROM sensor__sensors;", function (err) {
+        if (err) throw err;
+    });
+    pg_pool.query("DELETE FROM sensor__features_of_interest", function (err) {
+        if (err) throw err;
     });
 
     // delete redshift tables
-    rs_pool.connect(function (err, rs_client, done) {
+    rs_pool.query('DROP TABLE temperature;', function (err) {
         if (err) throw err;
-        rs_client.query('DROP TABLE temperature;', function (err) {
-            if (err) throw err;
-            rs_client.query('DROP TABLE relative_humidity;', function (err) {
-                if (err) throw err;
-                rs_client.query('DROP TABLE magnetic_field;', function (err) {
-                    if (err) throw err;
-                    rs_client.query('DROP TABLE unknown_feature;', function (err) {
-                        if (err) throw err;
-                        done();
-                    });
-                });
-            });
-        });
+    });
+    rs_pool.query('DROP TABLE relative_humidity;', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('DROP TABLE magnetic_field;', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('DROP TABLE computer_vision;', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('DROP TABLE unknown_feature;', function (err) {
+        if (err) throw err;
     });
 }
 else {
-    throw 'no arguments given';
+    throw 'no arguments given - must supply either "setup" or "teardown" argument';
 }

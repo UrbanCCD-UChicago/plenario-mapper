@@ -17,7 +17,7 @@ var pg_config = {
     max: 10,
     idleTimeoutMillis: 30000
 };
-var rs_config = {
+var rs_config = { 
     user: process.env.RS_USER,
     database: process.env.RS_NAME,
     password: process.env.RS_PASSWORD,
@@ -49,11 +49,11 @@ var blacklist = [];
 var parse_data = function (obs) {
     log.info('IN PARSE_DATA');
     // pulls postgres immediately if sensor is not known or properties are not reported as expected
-    if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
+    if (!(obs.sensor in map) ||
+        (obs.sensor in map && invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0)) {
         log.info('discrepancy in map');
-        update_map().then(function (new_map) {
+        update_map().then(function () {
             log.info('map updated');
-            map = new_map;
             if (!(obs.sensor in map)) {
                 log.info('sensor not in new map');
                 // this means we don't have the mapping for a sensor and it's not in postgres
@@ -75,12 +75,12 @@ var parse_data = function (obs) {
                 // updating the map fixed the discrepancy
                 // send resolve message if sensor in blacklist
                 send_resolve(obs.sensor);
-                update_type_map().then(function (new_type_map) {
-                    type_map = new_type_map;
+                update_type_map().then(function () {
+                    log.info('type_map updated');
+                    insert_emit(obs);
                 }, function (err) {
                     log.error(err)
                 });
-                insert_emit(obs);
             }
         }, function (err) {
             log.error(err)
@@ -115,7 +115,9 @@ function update_map() {
             for (var i = 0; i < result.rows.length; i++) {
                 new_map[result.rows[i].name] = result.rows[i].observed_properties;
             }
-            fulfill(new_map);
+            log.info(new_map);
+            map = new_map;
+            fulfill();
         });
     });
     return p
@@ -134,21 +136,23 @@ function update_type_map() {
     log.info('IN UPDATE_TYPE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
-                if (err) {
-                    reject('error running query in update_type_map ', err);
+            if (err) {
+                reject('error running query in update_type_map ', err);
+            }
+            var new_type_map = {};
+            for (var i = 0; i < result.rows.length; i++) {
+                var feature_type_map = {};
+                for (var j = 0; j < result.rows[i].observed_properties.length; j++) {
+                    feature_type_map[result.rows[i].observed_properties[j].name] =
+                        result.rows[i].observed_properties[j].type.toUpperCase();
                 }
-                var new_type_map = {};
-                for (var i = 0; i < result.rows.length; i++) {
-                    var feature_type_map = {};
-                    for (var j = 0; j < result.rows[i].observed_properties.length; j++) {
-                        feature_type_map[result.rows[i].observed_properties[j].name] =
-                            result.rows[i].observed_properties[j].type.toUpperCase();
-                    }
-                    new_type_map[result.rows[i].name] = feature_type_map;
-                }
-                fulfill(new_type_map);
-            });
+                new_type_map[result.rows[i].name] = feature_type_map;
+            }
+            log.info(new_type_map);
+            type_map = new_type_map;
+            fulfill();
         });
+    });
     return p
 }
 
@@ -166,21 +170,25 @@ function update_type_map() {
 function coerce_types(obs) {
     log.info('IN COERCE_TYPES');
     // the first time parse_data runs, it will try to run coerce_types with an empty map, which will throw errors
+    // this populates the type_map if that's the case
     if (Object.keys(type_map).length == 0) {
-        update_type_map().then( function (new_type_map) {
-            type_map = new_type_map;
+        log.info('empty type_map');
+        update_type_map().then(function () {
+            log.info('type_map updated');
             return coerce_types(obs)
         })
     }
+
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
             var feature = map[obs.sensor][key].split('.')[0];
             var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
-            if (type_map[feature][property] == 'VARCHAR') {
+            var type = type_map[feature][property];
+            if (type == 'VARCHAR' || type == 'STRING') {
                 obs.data[key] = String(obs.data[key]);
             }
-            else if (type_map[feature][property] == 'INTEGER' || type_map[feature][property] == 'INT') {
+            else if (type == 'INTEGER' || type == 'INT') {
                 if (isNaN(parseInt(obs.data[key]))) {
                     errors[key] = obs.data[key];
                 }
@@ -188,9 +196,7 @@ function coerce_types(obs) {
                     obs.data[key] = parseInt(obs.data[key]);
                 }
             }
-            else if (type_map[feature][property] == 'FLOAT' ||
-                type_map[feature][property] == 'DOUBLE' ||
-                type_map[feature][property] == 'DOUBLE PRECISION') {
+            else if (type == 'FLOAT' || type == 'DOUBLE' || type == 'DOUBLE PRECISION') {
                 if (isNaN(Number(obs.data[key]))) {
                     errors[key] = obs.data[key];
                 }
@@ -198,7 +204,7 @@ function coerce_types(obs) {
                     obs.data[key] = Number(obs.data[key]);
                 }
             }
-            else if (type_map[feature][property] == 'BOOL' || type_map[feature][property] == 'BOOLEAN') {
+            else if (type == 'BOOL' || type == 'BOOLEAN') {
                 if (obs.data[key] == '1' ||
                     (typeof obs.data[key] == 'string' && obs.data[key].toUpperCase() == 'TRUE') ||
                     obs.data[key] == true) {
@@ -214,7 +220,11 @@ function coerce_types(obs) {
                 }
             }
             else {
-                log.error('unrecognized type ' + type_map[feature][property]);
+                errors[key] = obs.data[key];
+                log.error(
+                    'unrecognized type ' + type +
+                    ' of property ' + property +
+                    ' of feature ' + feature);
             }
         }
     });
@@ -228,53 +238,55 @@ function coerce_types(obs) {
  * @param {Object} obs = observation
  */
 function insert_emit(obs) {
-    log.info('IN insert_emit');
-        if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-            // split obs into one copy containing all valid keys, one copy containing all invalid keys
-            // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
-            var misfit_obs = JSON.parse(JSON.stringify(obs));
-            var bad_keys = invalid_keys(obs).concat(Object.keys(coerce_types(obs).errors));
-            Object.keys(obs.data).forEach(function (key) {
-                if (bad_keys.indexOf(key) < 0) {
-                    delete misfit_obs.data[key]
-                }
-                else {
-                    delete obs.data[key]
-                }
-            });
-            rs_pool.query(misfit_query_text(misfit_obs), function (err) {
+    log.info('IN INSERT_EMIT');
+    if (!(obs.sensor in map) ||
+        (obs.sensor in map && invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0)) {
+        // split obs into one copy containing all valid keys, one copy containing all invalid keys
+        // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
+        var misfit_obs = JSON.parse(JSON.stringify(obs));
+        var bad_keys = invalid_keys(obs).concat(Object.keys(coerce_types(obs).errors));
+        Object.keys(obs.data).forEach(function (key) {
+            if (bad_keys.indexOf(key) < 0) {
+                delete misfit_obs.data[key]
+            }
+            else {
+                delete obs.data[key]
+            }
+        });
+        rs_pool.query(misfit_query_text(misfit_obs), function (err) {
+            if (err) {
+                log.error('error inserting data into unknown_feature table ', err)
+            }
+        });
+        if (Object.keys(obs.data).length > 0) {
+            insert_emit(obs);
+        }
+    }
+    else {
+        obs = coerce_types(obs).result;
+        var all_features = [];
+        Object.keys(obs.data).forEach(function (key) {
+            var feature = map[obs.sensor][key].split('.')[0];
+            if (all_features.indexOf(feature) < 0) {
+                all_features.push(feature)
+            }
+        });
+        for (var j = 0; j < all_features.length; j++) {
+            var feature = all_features[j];
+            rs_pool.query(feature_query_text(obs, feature), function (err) {
                 if (err) {
-                    log.error('error inserting data into unknown_feature table ', err)
+                    log.error('error inserting data into ' + feature.toLowerCase() + ' table ', err)
                 }
             });
-            if (Object.keys(obs.data).length > 0) {
-                insert_emit(obs);
-            }
         }
-        else {
-            obs = coerce_types(obs).result;
-            var all_features = [];
-            Object.keys(obs.data).forEach(function (key) {
-                var feature = map[obs.sensor][key].split('.')[0];
-                if (all_features.indexOf(feature) < 0) {
-                    all_features.push(feature)
-                }
-            });
-            for (var j = 0; j < all_features.length; j++) {
-                var feature = all_features[j];
-                rs_pool.query(feature_query_text(obs, feature), function (err) {
-                    if (err) {
-                        log.error('error inserting data into ' + feature.toLowerCase() + ' table ', err)
-                    }
-                });
-            }
-            // emit salvageable data to socket
-            var obs_list = format_obs(obs);
-            for (var i = 0; i < obs_list.length; i++) {
-                log.info('EMITTING TO SOCKET');
-                socket.emit('internal_data', obs_list[i]);
-            }
+        // emit salvageable data to socket
+        var obs_list = format_obs(obs);
+        for (var i = 0; i < obs_list.length; i++) {
+            log.info('EMITTING TO SOCKET: ');
+            log.info(obs_list[i]);
+            socket.emit('internal_data', obs_list[i]);
         }
+    }
 }
 
 /**
@@ -295,7 +307,6 @@ function misfit_query_text(obs) {
  * @param {Object} obs
  * @param {String} feature
  * @return {String} query_text
- * TODO: make sure this works for all types
  */
 function feature_query_text(obs, feature) {
     var query_text = util.format("INSERT INTO %s (node_id, datetime, meta_id, sensor, ", feature.toLowerCase());
@@ -305,7 +316,8 @@ function feature_query_text(obs, feature) {
             if (c != 0) {
                 query_text += ', '
             }
-            query_text += map[obs.sensor][key].split(/\.(.+)?/)[1];
+            var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
+            query_text += property;
             c++;
         }
     });
@@ -313,7 +325,17 @@ function feature_query_text(obs, feature) {
         "VALUES ('%s', '%s', %s, '%s'", obs.node_id.toLowerCase(), obs.datetime, obs.meta_id, obs.sensor.toLowerCase());
     Object.keys(obs.data).forEach(function (key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
-            query_text += ', ' + obs.data[key];
+            var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
+            var type = type_map[feature][property];
+            if (type == 'VARCHAR' || type == 'STRING') {
+                query_text += ', ' + "'" + obs.data[key] + "'";
+            }
+            else if (type == 'BOOL' || type == 'BOOLEAN') {
+                query_text += ', ' + String(obs.data[key]).toUpperCase();
+            }
+            else {
+                query_text += ', ' + obs.data[key];
+            }
         }
     });
     query_text += ');';
@@ -381,7 +403,7 @@ function invalid_keys(obs) {
 }
 
 /**
- * sends message to apiary if sensor not already in blacklist
+ * sends error message to apiary if sensor not already in blacklist
  *
  * @param {String} sensor = sensor name
  * @param {String} message_type
@@ -403,7 +425,7 @@ function send_error(sensor, message_type, args) {
             Object.keys(args.coercion_errors).forEach(function (key) {
                 var feature = map[sensor][key].split('.')[0];
                 var property = map[sensor][key].split(/\.(.+)?/)[1];
-                message.push('Property ' + property + ' expected type ' + type_map[feature][property] +
+                message.push('Property ' + property + ' of sensor ' + sensor + ' expected type ' + type_map[feature][property] +
                     ' and could not coerce value ' + args.coercion_errors[key] + ' of type ' + typeof args.coercion_errors[key])
             });
         }
