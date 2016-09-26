@@ -1,3 +1,12 @@
+/**
+ * setup testing with
+ * $ node configure_tests.js setup
+ *
+ * tear down testing with
+ * $ node configure_tests.js teardown
+ *
+ * if you don't tear down after testing, errors will be thrown on setup the next time
+ */
 var pg = require('pg');
 var util = require('util');
 

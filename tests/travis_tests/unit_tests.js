@@ -1,10 +1,10 @@
 /**
  * $ npm install nodeunit -g
  *
- * $ nodeunit function_tests.js
+ * $ nodeunit unit_tests.js
  */
 var rewire = require('rewire');
-var mapper = rewire('../app/mapper');
+var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
 
 mapper.__set__('map',
