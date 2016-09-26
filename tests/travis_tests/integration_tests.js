@@ -6,7 +6,7 @@
  * $ node ../configure_tests.js teardown
  */
 var rewire = require('rewire');
-var mapper = rewire('../app/mapper');
+var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
 var pg = require('pg');
 
