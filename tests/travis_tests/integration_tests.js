@@ -6,7 +6,7 @@
  * $ node ../configure_tests.js teardown
  */
 var rewire = require('rewire');
-var mapper = rewire('../app/mapper');
+var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
 var pg = require('pg');
 
@@ -99,7 +99,6 @@ exports.parse_data = function (test) {
     mapper.__set__('type_map', {});
     mapper.__set__('pg_pool', pg_pool);
     mapper.__set__('rs_pool', rs_pool);
-    mapper.__set__('socket', require('socket.io-client')('http://localhost:8081/'));
 
     // all valid keys
     var obs1 = {
@@ -188,7 +187,7 @@ exports.parse_data = function (test) {
     var bodyParser = require('body-parser');
     app.use(bodyParser.json());
 
-    // mapper will send post requests to 8080, app will listen for requests on 8080
+    // mapper will send post requests to 8080, mock apiary server will listen for requests on 8080
     var apiary_server = http.createServer(app);
     apiary_server.listen(8080);
     process.env['PLENARIO_HOST'] = 'localhost:8080';
@@ -198,9 +197,10 @@ exports.parse_data = function (test) {
         sockets.push(socket);
     });
 
-    // socket server listens on 8081
+    // mock socket server listens on 8081
     var socket_server = http.createServer(app);
     socket_server.listen(8081);
+    mapper.__set__('socket', require('socket.io-client')('http://localhost:8081/'));
 
     var error_count = 0;
     var resolve_count = 0;
