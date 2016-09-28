@@ -1,7 +1,7 @@
 /**
  * $ npm install nodeunit -g
  *
- * $ nodeunit function_tests.js
+ * $ nodeunit unit_tests.js
  */
 var rewire = require('rewire');
 var mapper = rewire('../../app/mapper');
