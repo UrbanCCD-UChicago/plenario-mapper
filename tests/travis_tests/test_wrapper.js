@@ -9,8 +9,14 @@ var reporter = require('nodeunit').reporters.default;
 // safer exit, but process.exit(0) will do the same in most cases
 var exit = require('exit');
 
-reporter.run(['tests/travis_tests/unit_tests.js'], null, function(){
-    reporter.run(['tests/travis_tests/integration_tests.js'], null, function(){
+reporter.run(['tests/travis_tests/unit_tests.js'], null, function(failures) {
+    if (failures) {
+        exit(1);
+    }
+    reporter.run(['tests/travis_tests/integration_tests.js'], null, function(failures) {
+        if (failures) {
+            exit(1);
+        }
         exit(0);
     });
 });

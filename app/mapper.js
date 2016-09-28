@@ -416,7 +416,7 @@ function send_error(sensor, message_type, args) {
     }
     else if (message_type == 'invalid_key') {
         message = [];
-        if (args.unknown_keys) {
+        if (args.unknown_keys && args.unknown_keys.length > 0) {
             message.push('Received data from sensor ' + sensor + ' with unknown key(s) ' + args.unknown_keys + '. ' +
                 'Please update the keys and properties in this sensors metadata.')
         }
@@ -429,7 +429,7 @@ function send_error(sensor, message_type, args) {
             });
         }
     }
-
+    
     if (blacklist.indexOf(sensor) < 0) {
         request.post('http://' + process.env.PLENARIO_HOST + '/apiary/send_message',
             {
