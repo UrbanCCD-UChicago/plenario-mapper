@@ -1,4 +1,6 @@
 /**
+ * to run these tests:
+ *
  * $ npm install nodeunit -g
  *
  * $ nodeunit unit_tests.js
