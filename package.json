@@ -14,7 +14,7 @@
     "release": "grunt release",
     "doc": "grunt jsdoc",
     "start": "nodejs app/bin/kcl-bootstrap -e -p app/consumer/sample.properties",
-    "test": "nodeunit tests/travis_tests"
+    "test": "nodeunit tests/travis_tests/test_wrapper.js"
   },
   "engines": {
     "node": "6.4.1"
@@ -29,6 +29,7 @@
     "socket.io-client": "~1.4.8"
   },
   "devDependencies": {
+    "exit": "~0.1.2",
     "nodeunit": "~0.9.4",
     "rewire": "~2.5.2",
     "underscore": "~1.8.3",

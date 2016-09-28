@@ -2,7 +2,7 @@
  * $ npm install nodeunit -g
  *
  * $ node ../configure_tests.js setup
- * $ nodeunit database_tests.js
+ * $ nodeunit integration_tests.js
  * $ node ../configure_tests.js teardown
  */
 var rewire = require('rewire');
@@ -191,11 +191,6 @@ exports.parse_data = function (test) {
     var apiary_server = http.createServer(app);
     apiary_server.listen(8080);
     process.env['PLENARIO_HOST'] = 'localhost:8080';
-    // keep track of sockets so you can destroy them all during cleanup
-    var sockets = [];
-    apiary_server.on('connection', function(socket) {
-        sockets.push(socket);
-    });
 
     // mock socket server listens on 8081
     var socket_server = http.createServer(app);
@@ -359,13 +354,8 @@ exports.parse_data = function (test) {
         });
     }, 3000);
 
-    // clean up so that test doesn't run forever
+    // end the test
     setTimeout(function () {
-        socket_server.close();
-        apiary_server.close();
-        sockets.forEach(function(socket) {
-            socket.destroy();
-        });
         test.done();
     }, 5000);
 };
