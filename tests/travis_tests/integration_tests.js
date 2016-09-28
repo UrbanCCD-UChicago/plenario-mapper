@@ -1,4 +1,6 @@
 /**
+ * to run these tests:
+ * 
  * $ npm install nodeunit -g
  *
  * $ node ../configure_tests.js setup

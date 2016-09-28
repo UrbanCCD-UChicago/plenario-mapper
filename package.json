@@ -14,7 +14,7 @@
     "release": "grunt release",
     "doc": "grunt jsdoc",
     "start": "nodejs app/bin/kcl-bootstrap -e -p app/consumer/sample.properties",
-    "test": "nodeunit tests/travis_tests/test_wrapper.js"
+    "test": "node tests/travis_tests/test_wrapper.js"
   },
   "engines": {
     "node": "6.4.1"
