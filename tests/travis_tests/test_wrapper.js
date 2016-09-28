@@ -4,7 +4,7 @@
  * this allows travis to continue with the build - otherwise the process will run forever and it will timeout
  */
 
-//loads default reporter, but any other can be used
+// loads default reporter, but any other can be used
 var reporter = require('nodeunit').reporters.default;
 // safer exit, but process.exit(0) will do the same in most cases
 var exit = require('exit');
