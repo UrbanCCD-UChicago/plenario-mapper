@@ -136,16 +136,17 @@ exports.parse_data = function (test) {
             Z: 90.92
         }
     };
-    // incoercible X value
+    // incoercible standing_water value
     var obs4 = {
         node_id: "004",
         meta_id: 23,
         datetime: "2017-01-01T00:00:00",
-        sensor: "hmc5883l",
+        sensor: "camera",
         data: {
-            X: "high",
-            Y: 32.11,
-            Z: 90.92
+            standing_water: 10,
+            cloud_type: "cumulonimbus",
+            num_pedestrians: 9,
+            traffic_density: .38
         }
     };
     // everything invalid or incoercible
@@ -236,7 +237,9 @@ exports.parse_data = function (test) {
                 resolve_count++;
             }
             else {
-                test.ok(false);
+                test.equals(req.body.value.length, 1);
+                test.ok(req.body.value[0].includes('could not correctly coerce'));
+                error_count++;
             }
         }
         else {
@@ -266,7 +269,11 @@ exports.parse_data = function (test) {
                 test.ok(_.isEqual(data.results, { z: 90.92 }));
             }
             else if (data.node_id == '004') {
-                test.ok(_.isEqual(data.results, { y: 32.11, z: 90.92 }));
+                test.ok(_.isEqual(data.results, {
+                    cloud_type: "cumulonimbus",
+                    num_pedestrians: 9,
+                    traffic_density: .38
+                }));
             }
             else if (data.node_id == '007') {
                 test.ok(_.isEqual(data.results, {
@@ -294,7 +301,7 @@ exports.parse_data = function (test) {
     setTimeout(function () {
         test.equals(data_count, 6);
         test.equals(resolve_count, 3);
-        test.equals(error_count, 4);
+        test.equals(error_count, 5);
     }, 5000);
 
     setTimeout(function () {
@@ -325,15 +332,16 @@ exports.parse_data = function (test) {
             test.ok(_.isEqual(JSON.parse(result.rows[0].data), {x1: 56.77, y1: 32.11}));
         });
 
-        rs_pool.query("SELECT * FROM magnetic_field WHERE node_id = '004';", function (err, result) {
+        rs_pool.query("SELECT * FROM computer_vision WHERE node_id = '004';", function (err, result) {
             if (err) throw err;
-            test.equals(result.rows[0].x, null);
-            test.equals(result.rows[0].y, 32.11);
-            test.equals(result.rows[0].z, 90.92);
+            test.equals(result.rows[0].standing_water, null);
+            test.equals(result.rows[0].cloud_type, 'cumulonimbus');
+            test.equals(result.rows[0].num_pedestrians, 9);
+            test.equals(result.rows[0].traffic_density, .38);
         });
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '004';", function (err, result) {
             if (err) throw err;
-            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {x: "high"}));
+            test.ok(_.isEqual(JSON.parse(result.rows[0].data), {standing_water: 10}));
         });
 
         rs_pool.query("SELECT * FROM unknown_feature WHERE node_id = '005';", function (err, result) {
