@@ -352,14 +352,14 @@ function feature_query_text(obs, feature) {
  *  datetime: "2016-08-05T00:00:08.246000",
  *  meta_id: 23,
  *  sensor: "HTU21D",
- *  feature_of_interest: "temperature",
+ *  feature: "temperature",
  *  results: { temperature: 37.90 } },
  *
  *  { node_id: "00A",
  *  datetime: "2016-08-05T00:00:08.246000",
  *  meta_id: 23,
  *  sensor: "HTU21D",
- *  feature_of_interest: "humidity",
+ *  feature: "humidity",
  *  results: { humidity: 27.48 } }
  *  ]
  */
@@ -372,8 +372,8 @@ function format_obs(obs) {
         var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
         if (features.indexOf(feature) < 0) {
             obs_list.push({
-                feature_of_interest: feature,
-                node_id: obs.node_id,
+                feature: feature,
+                node: obs.node_id,
                 sensor: obs.sensor,
                 datetime: obs.datetime,
                 results: {}
@@ -429,7 +429,7 @@ function send_error(sensor, message_type, args) {
             });
         }
     }
-    
+
     if (blacklist.indexOf(sensor) < 0) {
         request.post('http://' + process.env.PLENARIO_HOST + '/apiary/send_message',
             {

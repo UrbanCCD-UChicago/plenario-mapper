@@ -172,19 +172,19 @@ exports.format_obs = function (test) {
 
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs1), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
-            feature_of_interest: "temperature",
+            feature: "temperature",
             results: {
                 temperature: 37.91
             }
         },
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
-            feature_of_interest: "relative_humidity",
+            feature: "relative_humidity",
             results: {
                 humidity: 27.48
             }
@@ -192,10 +192,10 @@ exports.format_obs = function (test) {
     ]));
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs2), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "hmc5883l",
-            feature_of_interest: "magnetic_field",
+            feature: "magnetic_field",
             results: {
                 x: 56.77,
                 y: 32.11,
@@ -205,10 +205,10 @@ exports.format_obs = function (test) {
     ]));
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs3), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
-            feature_of_interest: "computer_vision",
+            feature: "computer_vision",
             results: {
                 standing_water: true,
                 cloud_type: "cumulonimbus",
