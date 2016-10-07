@@ -302,7 +302,7 @@ exports.parse_data = function (test) {
         test.equals(data_count, 6);
         test.equals(resolve_count, 3);
         test.equals(error_count, 5);
-    }, 5000);
+    }, 4000);
 
     setTimeout(function () {
         rs_pool.query("SELECT * FROM temperature WHERE node_id = '001';", function (err, result) {
