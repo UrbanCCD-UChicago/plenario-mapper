@@ -367,6 +367,6 @@ exports.parse_data = function (test) {
     // end the test
     setTimeout(function () {
         test.done();
-    }, 5000);
+    }, 6000);
 };
 
