@@ -256,10 +256,10 @@ exports.parse_data = function (test) {
         }, 5000);
         socket.on('internal_data', function (data) {
             data_count++;
-            if (data.node_id == '001' && data.feature_of_interest == 'temperature') {
+            if (data.node_id == '001' && data.feature == 'temperature') {
                 test.ok(_.isEqual(data.results, { temperature: 37.91 }));
             }
-            else if (data.node_id == '001' && data.feature_of_interest == 'relative_humidity') {
+            else if (data.node_id == '001' && data.feature == 'relative_humidity') {
                 test.ok(_.isEqual(data.results, { humidity: 27.48 }));
             }
             else if (data.node_id == '002') {

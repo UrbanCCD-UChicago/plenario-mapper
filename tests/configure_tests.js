@@ -49,7 +49,7 @@ if (process.argv[2] == 'setup') {
         if (err) throw err;
     });
 
-    // insert feature_of_interest metadata
+    // insert feature metadata
     pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('temperature', " +
         "'[{\"name\": \"temperature\", \"type\": \"FLOAT\"}]')", function (err) {
         if (err) throw err;
