@@ -253,7 +253,7 @@ exports.parse_data = function (test) {
         // necessary for cleanup so test doesn't run forever
         setTimeout(function () {
             socket.disconnect();
-        }, 5000);
+        }, 9000);
         socket.on('internal_data', function (data) {
             data_count++;
             if (data.node_id == '001' && data.feature == 'temperature') {
@@ -302,7 +302,7 @@ exports.parse_data = function (test) {
         test.equals(data_count, 6);
         test.equals(resolve_count, 3);
         test.equals(error_count, 5);
-    }, 4000);
+    }, 8000);
 
     setTimeout(function () {
         rs_pool.query("SELECT * FROM temperature WHERE node_id = '001';", function (err, result) {
@@ -362,11 +362,11 @@ exports.parse_data = function (test) {
             test.equals(result.rows[0].num_pedestrians, 11);
             test.equals(result.rows[0].traffic_density, .22);
         });
-    }, 3000);
+    }, 8000);
 
     // end the test
     setTimeout(function () {
         test.done();
-    }, 6000);
+    }, 10000);
 };
 
