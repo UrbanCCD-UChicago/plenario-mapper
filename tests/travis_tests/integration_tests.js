@@ -253,7 +253,7 @@ exports.parse_data = function (test) {
         // necessary for cleanup so test doesn't run forever
         setTimeout(function () {
             socket.disconnect();
-        }, 9000); 
+        }, 9000);
         socket.on('internal_data', function (data) {
             data_count++;
             if (data.node_id == '001' && data.feature == 'temperature') {
