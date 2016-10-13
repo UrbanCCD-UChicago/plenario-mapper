@@ -373,7 +373,7 @@ function format_obs(obs) {
         if (features.indexOf(feature) < 0) {
             obs_list.push({
                 feature: feature,
-                node_id: obs.node_id,
+                node: obs.node_id,
                 sensor: obs.sensor,
                 datetime: obs.datetime,
                 results: {}
