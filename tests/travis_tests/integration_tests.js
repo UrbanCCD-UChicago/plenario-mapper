@@ -256,26 +256,26 @@ exports.parse_data = function (test) {
         }, 9000);
         socket.on('internal_data', function (data) {
             data_count++;
-            if (data.node_id == '001' && data.feature == 'temperature') {
+            if (data.node == '001' && data.feature == 'temperature') {
                 test.ok(_.isEqual(data.results, { temperature: 37.91 }));
             }
-            else if (data.node_id == '001' && data.feature == 'relative_humidity') {
+            else if (data.node == '001' && data.feature == 'relative_humidity') {
                 test.ok(_.isEqual(data.results, { humidity: 27.48 }));
             }
-            else if (data.node_id == '002') {
+            else if (data.node == '002') {
                 test.ok(_.isEqual(data.results, { y: 32.11, z: 90.92 }));
             }
-            else if (data.node_id == '003') {
+            else if (data.node == '003') {
                 test.ok(_.isEqual(data.results, { z: 90.92 }));
             }
-            else if (data.node_id == '004') {
+            else if (data.node == '004') {
                 test.ok(_.isEqual(data.results, {
                     cloud_type: "cumulonimbus",
                     num_pedestrians: 9,
                     traffic_density: .38
                 }));
             }
-            else if (data.node_id == '007') {
+            else if (data.node == '007') {
                 test.ok(_.isEqual(data.results, {
                     standing_water: true,
                     cloud_type: "cumulonimbus",
