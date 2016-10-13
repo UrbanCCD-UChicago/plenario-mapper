@@ -172,7 +172,7 @@ exports.format_obs = function (test) {
 
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs1), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
             feature: "temperature",
@@ -181,7 +181,7 @@ exports.format_obs = function (test) {
             }
         },
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
             feature: "relative_humidity",
@@ -192,7 +192,7 @@ exports.format_obs = function (test) {
     ]));
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs2), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "hmc5883l",
             feature: "magnetic_field",
@@ -205,7 +205,7 @@ exports.format_obs = function (test) {
     ]));
     test.ok(_.isEqual(mapper.__get__('format_obs')(obs3), [
         {
-            node_id: "00a",
+            node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
             feature: "computer_vision",
