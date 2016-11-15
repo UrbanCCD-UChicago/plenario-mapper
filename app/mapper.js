@@ -47,18 +47,18 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_data = function (obs) {
-    // log.info('IN PARSE_DATA');
-    // put all nodes, sensors, and keys to lower case for internal comparisons
+    // put network name, all nodes, sensors, and data keys to lower case for internal comparisons
     obs.node_id = obs.node_id.toLowerCase();
     obs.sensor = obs.sensor.toLowerCase();
+    obs.network = obs.network.toLowerCase();
     Object.keys(obs.data).forEach(function (key) {
         if (key != key.toLowerCase()) {
             obs.data[key.toLowerCase()] = obs.data[key];
             delete obs.data[key];
         }
     });
-    // pulls postgres immediately if sensor is not known or properties are not reported as expected
-    // the Object.keys(type_map).length == 0 catch prevents coerce_types from running with an empty type_map,
+    // Pulls postgres immediately if sensor is not known or properties are not reported as expected.
+    // The Object.keys(type_map).length == 0 catch prevents coerce_types from running with an empty type_map on startup,
     // which would throw TypeErrors
     if (invalid_keys(obs).length > 0 || Object.keys(type_map).length == 0 ||
         (Object.keys(type_map).length > 0 && Object.keys(coerce_types(obs).errors).length > 0)) {
@@ -70,7 +70,7 @@ var parse_data = function (obs) {
                     log.info('sensor not in new map');
                     // this means we don't have the mapping for a sensor and it's not in postgres
                     // send error message to apiary if message not already sent
-                    send_error(obs.sensor, 'does_not_exist', null);
+                    send_error(obs.sensor, 'does_not_exist', {network: obs.network});
                     insert_emit(obs);
                 }
                 else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
@@ -79,7 +79,11 @@ var parse_data = function (obs) {
                     // or the types of this observation cannot be correctly coerced
                     // send error message to apiary if message not already sent
                     send_error(obs.sensor, 'invalid_key',
-                        {unknown_keys: invalid_keys(obs), coercion_errors: coerce_types(obs).errors});
+                        {
+                            unknown_keys: invalid_keys(obs),
+                            coercion_errors: coerce_types(obs).errors,
+                            network: obs.network
+                        });
                     insert_emit(obs);
                 }
                 else {
@@ -116,7 +120,6 @@ var parse_data = function (obs) {
  * where each key is the expected key from the node and each value is the equivalent FoI.property
  */
 function update_map() {
-    // log.info('IN UPDATE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
             if (err) {
@@ -124,7 +127,8 @@ function update_map() {
             }
             var new_map = {};
             for (var i = 0; i < result.rows.length; i++) {
-                new_map[result.rows[i].name.toLowerCase()] = JSON.parse(JSON.stringify(result.rows[i].observed_properties).toLowerCase());
+                new_map[result.rows[i].name.toLowerCase()] =
+                    JSON.parse(JSON.stringify(result.rows[i].observed_properties).toLowerCase());
             }
             map = new_map;
             fulfill();
@@ -144,7 +148,6 @@ function update_map() {
  * where each key is the FoI and each value is a dictionary of observed properties and their SQL types
  */
 function update_type_map() {
-    // log.info('IN UPDATE_TYPE_MAP');
     var p = new promise(function (fulfill, reject) {
         pg_pool.query('SELECT * FROM sensor__features_of_interest', function (err, result) {
             if (err) {
@@ -178,7 +181,6 @@ function update_type_map() {
  * }
  */
 function coerce_types(obs) {
-    // log.info('IN COERCE_TYPES');
     var errors = {};
     Object.keys(obs.data).forEach(function (key) {
         if (invalid_keys(obs).indexOf(key) < 0) {
@@ -237,9 +239,7 @@ function coerce_types(obs) {
  * @param {Object} obs = observation
  */
 function insert_emit(obs) {
-    // log.info('IN INSERT_EMIT');
     if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-        // log.info('IN INSERT_EMIT:IF == MISFIT');
         // split obs into one copy containing all valid keys, one copy containing all invalid keys
         // insert all valid-keyed-values into feature tables, invalid-keyed-values into unknown_feature table
         var misfit_obs = JSON.parse(JSON.stringify(obs));
@@ -262,7 +262,6 @@ function insert_emit(obs) {
         }
     }
     else {
-        // log.info('IN INSERT_EMIT:ELSE == VALID');
         obs = coerce_types(obs).result;
         var all_features = [];
         Object.keys(obs.data).forEach(function (key) {
@@ -275,14 +274,14 @@ function insert_emit(obs) {
             var feature = all_features[j];
             rs_pool.query(feature_query_text(obs, feature), function (err) {
                 if (err) {
-                    log.error('error inserting data into ' + feature.toLowerCase() + ' table ', err)
+                    log.error('error inserting data into ' +
+                        obs.network + '__' + feature.toLowerCase() + ' table ', err)
                 }
             });
         }
         // emit salvageable data to socket
         var obs_list = format_obs(obs);
         for (var i = 0; i < obs_list.length; i++) {
-            // log.info('EMITTING TO SOCKET');
             socket.emit('internal_data', obs_list[i]);
         }
     }
@@ -295,9 +294,9 @@ function insert_emit(obs) {
  * @return {String} query_text
  */
 function misfit_query_text(obs) {
-    return util.format("INSERT INTO unknown_feature " +
+    return util.format("INSERT INTO %s__unknown_feature " +
         "VALUES ('%s', '%s', %s, '%s', '%s');",
-        obs.node_id, obs.datetime, obs.meta_id, obs.sensor, JSON.stringify(obs.data));
+        obs.network, obs.node_id, obs.datetime, obs.meta_id, obs.sensor, JSON.stringify(obs.data));
 }
 
 /**
@@ -308,7 +307,8 @@ function misfit_query_text(obs) {
  * @return {String} query_text
  */
 function feature_query_text(obs, feature) {
-    var query_text = util.format("INSERT INTO %s (node_id, datetime, meta_id, sensor, ", feature.toLowerCase());
+    var query_text = util.format("INSERT INTO %s__%s (node_id, datetime, meta_id, sensor, ",
+        obs.network, feature.toLowerCase());
     var c = 0;
     Object.keys(obs.data).forEach(function (key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
@@ -321,7 +321,8 @@ function feature_query_text(obs, feature) {
         }
     });
     query_text = util.format(query_text + ") " +
-        "VALUES ('%s', '%s', %s, '%s'", obs.node_id.toLowerCase(), obs.datetime, obs.meta_id, obs.sensor.toLowerCase());
+        "VALUES ('%s', '%s', %s, '%s'",
+        obs.node_id.toLowerCase(), obs.datetime, obs.meta_id, obs.sensor.toLowerCase());
     Object.keys(obs.data).forEach(function (key) {
         if (map[obs.sensor][key].split('.')[0] == feature) {
             var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
@@ -376,6 +377,7 @@ function format_obs(obs) {
                 node: obs.node_id,
                 sensor: obs.sensor,
                 datetime: obs.datetime,
+                network: obs.network,
                 results: {}
             });
             features.push(feature)
@@ -406,26 +408,31 @@ function invalid_keys(obs) {
  *
  * @param {String} sensor = sensor name
  * @param {String} message_type
- * @param {Object} args = {unknown_keys:[...], coercion_errors:{key:value, ...}}
+ * @param {Object} args = {network: network_name,
+ *    if 'invalid_key' --  unknown_keys:[...], coercion_errors:{key:value, ...}}
  */
 function send_error(sensor, message_type, args) {
     var message;
     if (message_type == 'does_not_exist') {
-        message = [ 'Sensor ' + sensor + ' not found in sensor metadata. ' +
-            'Please add this sensor.' ];
+        message = [ 'Sensor ' + sensor + ' not found in sensor metadata ' +
+            'for network ' + args.network + '. Please add this sensor.' ];
     }
     else if (message_type == 'invalid_key') {
         message = [];
         if (args.unknown_keys && args.unknown_keys.length > 0) {
-            message.push('Received data from sensor ' + sensor + ' with unknown key(s) ' + args.unknown_keys + '. ' +
-                'Please update the keys and properties in this sensors metadata.')
+            message.push('Received data from sensor ' + sensor +
+                ' with unknown key(s) ' + args.unknown_keys +
+                'from network ' + args.network +
+                '. Please update the keys and properties in this sensors metadata.')
         }
         if (args.coercion_errors) {
             Object.keys(args.coercion_errors).forEach(function (key) {
                 var feature = map[sensor][key].split('.')[0];
                 var property = map[sensor][key].split(/\.(.+)?/)[1];
-                message.push('Property ' + property + ' of sensor ' + sensor + ' expected type ' + type_map[feature][property] +
-                    ' and could not correctly coerce value ' + args.coercion_errors[key] + ' of type ' + typeof args.coercion_errors[key])
+                message.push('Property ' + property + ' of sensor ' + sensor +
+                    ' expected type ' + type_map[feature][property] +
+                    ' and could not correctly coerce value ' + args.coercion_errors[key] +
+                    ' of type ' + typeof args.coercion_errors[key])
             });
         }
     }

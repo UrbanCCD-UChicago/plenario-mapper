@@ -56,13 +56,14 @@ exports.misfit_query_text = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
+        network: "array_of_things_chicago",
         data: {
             temp: 37.91,
             humidity: 27.48
         }
     };
 
-    test.equal(mapper.__get__('misfit_query_text')(obs), "INSERT INTO unknown_feature " +
+    test.equal(mapper.__get__('misfit_query_text')(obs), "INSERT INTO array_of_things_chicago__unknown_feature " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', '{\"temp\":37.91,\"humidity\":27.48}');");
     test.done();
 };
@@ -74,6 +75,7 @@ exports.feature_query_text = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
+        network: "array_of_things_chicago",
         data: {
             temp: 37.91,
             humidity: 27.48
@@ -84,6 +86,7 @@ exports.feature_query_text = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
+        network: "array_of_things_chicago",
         data: {
             x: 56.77,
             y: 32.11,
@@ -95,6 +98,7 @@ exports.feature_query_text = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
+        network: "array_of_things_chicago",
         data: {
             y: 32.11,
             z: 90.92
@@ -105,6 +109,7 @@ exports.feature_query_text = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: true,
             cloud_type: "cumulonimbus",
@@ -114,21 +119,26 @@ exports.feature_query_text = function (test) {
     };
 
     // split features
-    test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'), "INSERT INTO temperature " +
+    test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'),
+        "INSERT INTO array_of_things_chicago__temperature " +
         "(node_id, datetime, meta_id, sensor, temperature) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 37.91);");
-    test.equal(mapper.__get__('feature_query_text')(obs1, 'relative_humidity'), "INSERT INTO relative_humidity " +
+    test.equal(mapper.__get__('feature_query_text')(obs1, 'relative_humidity'),
+        "INSERT INTO array_of_things_chicago__relative_humidity " +
         "(node_id, datetime, meta_id, sensor, humidity) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 27.48);");
     // full obs
-    test.equal(mapper.__get__('feature_query_text')(obs2, 'magnetic_field'), "INSERT INTO magnetic_field " +
+    test.equal(mapper.__get__('feature_query_text')(obs2, 'magnetic_field'),
+        "INSERT INTO array_of_things_chicago__magnetic_field " +
         "(node_id, datetime, meta_id, sensor, x, y, z) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 56.77, 32.11, 90.92);");
     // partial obs
-    test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'), "INSERT INTO magnetic_field " +
+    test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'),
+        "INSERT INTO array_of_things_chicago__magnetic_field " +
         "(node_id, datetime, meta_id, sensor, y, z) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 32.11, 90.92);");
-    test.equal(mapper.__get__('feature_query_text')(obs4, 'computer_vision'), "INSERT INTO computer_vision " +
+    test.equal(mapper.__get__('feature_query_text')(obs4, 'computer_vision'),
+        "INSERT INTO array_of_things_chicago__computer_vision " +
         "(node_id, datetime, meta_id, sensor, standing_water, cloud_type, num_pedestrians, traffic_density) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'camera', TRUE, 'cumulonimbus', 13, 0.44);");
     test.done();
@@ -141,6 +151,7 @@ exports.format_obs = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
+        network: "array_of_things_chicago",
         data: {
             temp: 37.91,
             humidity: 27.48
@@ -151,6 +162,7 @@ exports.format_obs = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
+        network: "array_of_things_chicago",
         data: {
             x: 56.77,
             y: 32.11,
@@ -162,6 +174,7 @@ exports.format_obs = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: true,
             cloud_type: "cumulonimbus",
@@ -175,6 +188,7 @@ exports.format_obs = function (test) {
             node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
+            network: "array_of_things_chicago",
             feature: "temperature",
             results: {
                 temperature: 37.91
@@ -184,6 +198,7 @@ exports.format_obs = function (test) {
             node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "htu21d",
+            network: "array_of_things_chicago",
             feature: "relative_humidity",
             results: {
                 humidity: 27.48
@@ -195,6 +210,7 @@ exports.format_obs = function (test) {
             node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "hmc5883l",
+            network: "array_of_things_chicago",
             feature: "magnetic_field",
             results: {
                 x: 56.77,
@@ -208,6 +224,7 @@ exports.format_obs = function (test) {
             node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             feature: "computer_vision",
             results: {
                 standing_water: true,
@@ -227,6 +244,7 @@ exports.coerce_types = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: 1,
             cloud_type: 1,
@@ -240,6 +258,7 @@ exports.coerce_types = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: "0",
             cloud_type: "0",
@@ -253,6 +272,7 @@ exports.coerce_types = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: "true",
             cloud_type: "true",
@@ -266,6 +286,7 @@ exports.coerce_types = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: false,
             cloud_type: false,
@@ -279,6 +300,7 @@ exports.coerce_types = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
+        network: "array_of_things_chicago",
         data: {
             standing_water: 10,
             cloud_type: 10,
@@ -293,6 +315,7 @@ exports.coerce_types = function (test) {
             meta_id: 23,
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             data: {
                 standing_water: true,
                 cloud_type: "1",
@@ -308,6 +331,7 @@ exports.coerce_types = function (test) {
             meta_id: 23,
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             data: {
                 standing_water: false,
                 cloud_type: "0",
@@ -323,6 +347,7 @@ exports.coerce_types = function (test) {
             meta_id: 23,
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             data: {
                 standing_water: true,
                 cloud_type: "true",
@@ -341,6 +366,7 @@ exports.coerce_types = function (test) {
             meta_id: 23,
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             data: {
                 standing_water: false,
                 cloud_type: "false",
@@ -358,6 +384,7 @@ exports.coerce_types = function (test) {
             meta_id: 23,
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
+            network: "array_of_things_chicago",
             data: {
                 standing_water: 10,
                 cloud_type: "10",
@@ -379,6 +406,7 @@ exports.invalid_keys = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "htu21d",
+        network: "array_of_things_chicago",
         data: {
             temp: 37.91,
             humidity: 27.48
@@ -390,6 +418,7 @@ exports.invalid_keys = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "hmc5883l",
+        network: "array_of_things_chicago",
         data: {
             x1: 56.77,
             y1: 32.11,
