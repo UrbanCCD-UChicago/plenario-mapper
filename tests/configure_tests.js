@@ -36,7 +36,8 @@ if (process.argv[2] == 'setup') {
     pg_pool.query("DELETE FROM sensor__sensors", function (err) {
         if (err) throw err;
         pg_pool.query("INSERT INTO sensor__sensors VALUES ('htu21d', " +
-            "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\"}', '{}')", function (err) {
+            "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\", " +
+            "\"Temperature\": \"temperature.temperature\"}', '{}')", function (err) {
             if (err) throw err;
         });
         pg_pool.query("INSERT INTO sensor__sensors VALUES ('hmc5883l', " +
@@ -145,6 +146,19 @@ if (process.argv[2] == 'setup') {
             if (err) throw err;
         });
     });
+    rs_pool.query('CREATE TABLE IF NOT EXISTS internet_of_stuff_seattle__temperature (' +
+        '"node_id" VARCHAR NOT NULL, ' +
+        'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
+        '"meta_id" DOUBLE PRECISION NOT NULL, ' +
+        '"sensor" VARCHAR NOT NULL, ' +
+        '"temperature" DOUBLE PRECISION, ' +
+        'PRIMARY KEY ("node_id", datetime)) ' +
+        'DISTKEY(datetime) SORTKEY(datetime);', function (err) {
+        if (err) throw err;
+        rs_pool.query('DELETE FROM internet_of_stuff_seattle__temperature', function (err) {
+            if (err) throw err;
+        });
+    });
 }
 
 else if (process.argv[2] == 'teardown') {
@@ -171,6 +185,9 @@ else if (process.argv[2] == 'teardown') {
         if (err) throw err;
     });
     rs_pool.query('DROP TABLE IF EXISTS array_of_things_chicago__unknown_feature;', function (err) {
+        if (err) throw err;
+    });
+    rs_pool.query('DROP TABLE IF EXISTS internet_of_stuff_seattle__temperature;', function (err) {
         if (err) throw err;
     });
 }

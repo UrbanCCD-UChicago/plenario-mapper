@@ -12,6 +12,7 @@ var _ = require('underscore');
 mapper.__set__('map',
     {
         htu21d: {
+            temperature: "temperature.temperature",
             temp: "temperature.temperature",
             humidity: "relative_humidity.humidity"
         },
@@ -117,6 +118,16 @@ exports.feature_query_text = function (test) {
             traffic_density: .44
         }
     };
+    var obs5 = {
+        node_id: "00a",
+        meta_id: 23,
+        datetime: "2016-08-05T00:00:08.246000",
+        sensor: "htu21d",
+        network: "internet_of_stuff_seattle",
+        data: {
+            temperature: 40.01
+        }
+    };
 
     // split features
     test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'),
@@ -141,6 +152,10 @@ exports.feature_query_text = function (test) {
         "INSERT INTO array_of_things_chicago__computer_vision " +
         "(node_id, datetime, meta_id, sensor, standing_water, cloud_type, num_pedestrians, traffic_density) " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'camera', TRUE, 'cumulonimbus', 13, 0.44);");
+    test.equal(mapper.__get__('feature_query_text')(obs5, 'temperature'),
+        "INSERT INTO internet_of_stuff_seattle__temperature " +
+        "(node_id, datetime, meta_id, sensor, temperature) " +
+        "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 40.01);");
     test.done();
 };
 
@@ -174,7 +189,7 @@ exports.format_obs = function (test) {
         meta_id: 23,
         datetime: "2016-08-05T00:00:08.246000",
         sensor: "camera",
-        network: "array_of_things_chicago",
+        network: "internet_of_stuff_seattle",
         data: {
             standing_water: true,
             cloud_type: "cumulonimbus",
@@ -224,7 +239,7 @@ exports.format_obs = function (test) {
             node: "00a",
             datetime: "2016-08-05T00:00:08.246000",
             sensor: "camera",
-            network: "array_of_things_chicago",
+            network: "internet_of_stuff_seattle",
             feature: "computer_vision",
             results: {
                 standing_water: true,

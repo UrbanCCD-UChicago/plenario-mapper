@@ -44,6 +44,7 @@ exports.update_map = function (test) {
         test.ok(_.isEqual(mapper.__get__('map'),
             {
                 htu21d: {
+                    temperature: "temperature.temperature",
                     temp: "temperature.temperature",
                     humidity: "relative_humidity.humidity"
                 },
@@ -192,6 +193,17 @@ exports.parse_data = function (test) {
             traffic_density: .22
         }
     };
+    // different network
+    var obs8 = {
+        node_id: "008",
+        meta_id: 12,
+        datetime: "2017-01-01T00:00:00",
+        sensor: "htu21d",
+        network: "internet_of_stuff_seattle",
+        data: {
+            Temperature: 40.01
+        }
+    };
 
     var http = require('http');
     var express = require('express');
@@ -267,15 +279,19 @@ exports.parse_data = function (test) {
             data_count++;
             if (data.node == '001' && data.feature == 'temperature') {
                 test.ok(_.isEqual(data.results, { temperature: 37.91 }));
+                test.equals(data.network, "array_of_things_chicago");
             }
             else if (data.node == '001' && data.feature == 'relative_humidity') {
                 test.ok(_.isEqual(data.results, { humidity: 27.48 }));
+                test.equals(data.network, "array_of_things_chicago");
             }
             else if (data.node == '002') {
                 test.ok(_.isEqual(data.results, { y: 32.11, z: 90.92 }));
+                test.equals(data.network, "array_of_things_chicago");
             }
             else if (data.node == '003') {
                 test.ok(_.isEqual(data.results, { z: 90.92 }));
+                test.equals(data.network, "array_of_things_chicago");
             }
             else if (data.node == '004') {
                 test.ok(_.isEqual(data.results, {
@@ -283,6 +299,7 @@ exports.parse_data = function (test) {
                     num_pedestrians: 9,
                     traffic_density: .38
                 }));
+                test.equals(data.network, "array_of_things_chicago");
             }
             else if (data.node == '007') {
                 test.ok(_.isEqual(data.results, {
@@ -291,6 +308,11 @@ exports.parse_data = function (test) {
                     num_pedestrians: 11,
                     traffic_density: .22
                 }));
+                test.equals(data.network, "array_of_things_chicago");
+            }
+            else if (data.node == '008') {
+                test.ok(_.isEqual(data.results, { temperature: 40.01 }));
+                test.equals(data.network, "internet_of_stuff_seattle");
             }
             else {
                 test.ok(false);
@@ -306,10 +328,11 @@ exports.parse_data = function (test) {
     parse_data(obs5);
     parse_data(obs6);
     parse_data(obs7);
+    parse_data(obs8);
 
     setTimeout(function () {
-        test.equals(data_count, 6);
-        test.equals(resolve_count, 3);
+        test.equals(data_count, 7);
+        test.equals(resolve_count, 4);
         test.equals(error_count, 5);
     }, 8000);
 
@@ -390,6 +413,13 @@ exports.parse_data = function (test) {
             test.equals(result.rows[0].num_pedestrians, 11);
             test.equals(result.rows[0].traffic_density, .22);
         }
+        );
+
+        rs_pool.query("SELECT * FROM internet_of_stuff_seattle__temperature WHERE node_id = '008';",
+            function (err, result) {
+                if (err) throw err;
+                test.equals(result.rows[0].temperature, 40.01);
+            }
         );
     }, 8000);
 
