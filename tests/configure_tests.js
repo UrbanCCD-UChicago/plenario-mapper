@@ -75,7 +75,7 @@ if (process.argv[2] == 'setup') {
         });
     });
 
-    // create redshift tables and clear them of possible old test data
+    // create redshift tables or clear existing tables of possible old test data
     rs_pool.query('CREATE TABLE IF NOT EXISTS array_of_things_chicago__temperature (' +
         '"node_id" VARCHAR NOT NULL, ' +
         'datetime TIMESTAMP WITHOUT TIME ZONE NOT NULL, ' +
@@ -191,6 +191,7 @@ else if (process.argv[2] == 'teardown') {
         if (err) throw err;
     });
 }
+    
 else {
     console.log('invalid argument - must supply either "setup" or "teardown"');
 }

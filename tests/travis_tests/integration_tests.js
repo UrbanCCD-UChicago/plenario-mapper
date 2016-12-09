@@ -14,6 +14,7 @@ var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
 var pg = require('pg');
 
+// connect to 'sensor_test' databases in postgres and redshift
 var pg_config = {
     user: process.env.DB_USER,
     database: 'sensor_test',

@@ -9,6 +9,7 @@ var rewire = require('rewire');
 var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
 
+// set the map resources that are usually require database queries
 mapper.__set__('map',
     {
         htu21d: {
