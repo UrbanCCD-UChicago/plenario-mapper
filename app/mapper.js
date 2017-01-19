@@ -121,7 +121,7 @@ var parse_data = function (obs) {
  */
 function update_map() {
     var p = new promise(function (fulfill, reject) {
-        pg_pool.query('SELECT * FROM sensor__sensors', function (err, result) {
+        pg_pool.query('SELECT * FROM sensor__sensor_metadata', function (err, result) {
             if (err) {
                 reject('error running query in update_map ' + err);
             }
