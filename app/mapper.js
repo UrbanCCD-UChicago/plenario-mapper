@@ -47,6 +47,7 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_data = function (obs) {
+    log.info(obs);
     // put network name, all nodes, sensors, and data keys to lower case for internal comparisons
     obs.node_id = obs.node_id.toLowerCase();
     obs.sensor = obs.sensor.toLowerCase();
