@@ -51,19 +51,6 @@ var parse_data = function (obs) {
     obs.node_id = obs.node_id.toLowerCase();
     obs.sensor = obs.sensor.toLowerCase();
 
-    // todo: remove this when the back log of unlabeled observations have
-    // todo: been consumed
-    try {
-        obs.network = obs.network.toLowerCase();
-    }
-
-    catch(e) {
-        if (e instanceof TypeError)
-            obs.network = "array_of_things_chicago";
-        else
-            throw e;
-    }
-
     Object.keys(obs.data).forEach(function (key) {
         if (key != key.toLowerCase()) {
             obs.data[key.toLowerCase()] = obs.data[key];
