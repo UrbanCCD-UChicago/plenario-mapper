@@ -147,7 +147,7 @@ exports.feature_query_text = function (test) {
     // partial obs
     test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'),
         "INSERT INTO array_of_things_chicago__magnetic_field " +
-        "(node_id, datetime, meta_id, sensor, \"y\",\"z\") " +
+        "(node_id, datetime, meta_id, sensor, \"y\", \"z\") " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 32.11, 90.92);");
     test.equal(mapper.__get__('feature_query_text')(obs4, 'computer_vision'),
         "INSERT INTO array_of_things_chicago__computer_vision " +

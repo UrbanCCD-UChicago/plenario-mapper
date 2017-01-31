@@ -33,7 +33,7 @@ var pg_pool = new pg.Pool(pg_config);
 if (process.argv[2] == 'setup') {
 
     // insert test data after clearing metadata tables of possible old test data
-    pg_pool.query("DELETE FROM sensor__sensors", function (err) {
+    pg_pool.query("DELETE FROM sensor__sensor_metadata", function (err) {
         if (err) throw err;
         pg_pool.query("INSERT INTO sensor__sensor_metadata VALUES ('htu21d', " +
             "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\", " +
@@ -167,7 +167,7 @@ else if (process.argv[2] == 'teardown') {
     pg_pool.query("DELETE FROM sensor__sensor_metadata;", function (err) {
         if (err) throw err;
     });
-    pg_pool.query("DELETE FROM sensor__feature", function (err) {
+    pg_pool.query("DELETE FROM sensor__feature_metadata", function (err) {
         if (err) throw err;
     });
 

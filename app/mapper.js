@@ -11,7 +11,6 @@ var log = logger().getLogger('mapper');
 winston.level = process.env.LOG_LEVEL || "info";
 winston.remove(winston.transports.Console);
 winston.add(winston.transports.Console, {'colorize': true, 'timestamp': true});
-winston.add(winston.transports.File, {'colorize': true, 'filename': '/var/log/mapper.log', 'timestamp': true});
 
 // Connect to the publisher
 var socket = require('socket.io-client')('http://streaming.plenar.io/', {reconnect: true, query: 'consumer_token=' + process.env.CONSUMER_TOKEN});
@@ -72,19 +71,19 @@ var parse_data = function (obs) {
     // which would throw TypeErrors
     if (invalid_keys(obs).length > 0 || Object.keys(type_map).length == 0 ||
         (Object.keys(type_map).length > 0 && Object.keys(coerce_types(obs).errors).length > 0)) {
-        // log.info('discrepancy in map');
+        log.info('discrepancy in map');
         update_map().then(function () {
             update_type_map().then(function () {
-                // log.info('map updated');
+                log.info('map updated');
                 if (!(obs.sensor in map)) {
-                    // log.info('sensor not in new map');
+                    log.info('sensor not in new map');
                     // this means we don't have the mapping for a sensor and it's not in postgres
                     // send error message to apiary if message not already sent
                     send_error(obs.sensor, 'does_not_exist', {network: obs.network});
                     insert_emit(obs);
                 }
                 else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-                    // log.info('invalid keys in new map');
+                    log.info('invalid keys in new map');
                     // this means there is an unknown or faulty key being sent from beehive
                     // or the types of this observation cannot be correctly coerced
                     // send error message to apiary if message not already sent
@@ -97,7 +96,7 @@ var parse_data = function (obs) {
                     insert_emit(obs);
                 }
                 else {
-                    // log.info('new map fixed everything');
+                    log.info('new map fixed everything');
                     // updating the map fixed the discrepancy
                     // send resolve message if sensor in blacklist
                     send_resolve(obs.sensor);
