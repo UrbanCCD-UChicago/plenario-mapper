@@ -133,29 +133,29 @@ exports.feature_query_text = function (test) {
     // split features
     test.equal(mapper.__get__('feature_query_text')(obs1, 'temperature'),
         "INSERT INTO array_of_things_chicago__temperature " +
-        "(node_id, datetime, meta_id, sensor, temperature) " +
+        "(node_id, datetime, meta_id, sensor, \"temperature\") " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 37.91);");
     test.equal(mapper.__get__('feature_query_text')(obs1, 'relative_humidity'),
         "INSERT INTO array_of_things_chicago__relative_humidity " +
-        "(node_id, datetime, meta_id, sensor, humidity) " +
+        "(node_id, datetime, meta_id, sensor, \"humidity\") " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 27.48);");
     // full obs
     test.equal(mapper.__get__('feature_query_text')(obs2, 'magnetic_field'),
         "INSERT INTO array_of_things_chicago__magnetic_field " +
-        "(node_id, datetime, meta_id, sensor, x, y, z) " +
+        "(node_id, datetime, meta_id, sensor, \"x\", \"y\", \"z\") " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 56.77, 32.11, 90.92);");
     // partial obs
     test.equal(mapper.__get__('feature_query_text')(obs3, 'magnetic_field'),
         "INSERT INTO array_of_things_chicago__magnetic_field " +
-        "(node_id, datetime, meta_id, sensor, y, z) " +
+        "(node_id, datetime, meta_id, sensor, \"y\",\"z\") " +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'hmc5883l', 32.11, 90.92);");
     test.equal(mapper.__get__('feature_query_text')(obs4, 'computer_vision'),
         "INSERT INTO array_of_things_chicago__computer_vision " +
-        "(node_id, datetime, meta_id, sensor, standing_water, cloud_type, num_pedestrians, traffic_density) " +
+        '(node_id, datetime, meta_id, sensor, "standing_water", "cloud_type", "num_pedestrians", "traffic_density") ' +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'camera', TRUE, 'cumulonimbus', 13, 0.44);");
     test.equal(mapper.__get__('feature_query_text')(obs5, 'temperature'),
         "INSERT INTO internet_of_stuff_seattle__temperature " +
-        "(node_id, datetime, meta_id, sensor, temperature) " +
+        '(node_id, datetime, meta_id, sensor, "temperature") ' +
         "VALUES ('00a', '2016-08-05T00:00:08.246000', 23, 'htu21d', 40.01);");
     test.done();
 };

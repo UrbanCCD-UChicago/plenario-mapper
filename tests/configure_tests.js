@@ -35,38 +35,38 @@ if (process.argv[2] == 'setup') {
     // insert test data after clearing metadata tables of possible old test data
     pg_pool.query("DELETE FROM sensor__sensors", function (err) {
         if (err) throw err;
-        pg_pool.query("INSERT INTO sensor__sensors VALUES ('htu21d', " +
+        pg_pool.query("INSERT INTO sensor__sensor_metadata VALUES ('htu21d', " +
             "'{\"Humidity\": \"relative_humidity.humidity\", \"Temp\": \"temperature.temperature\", " +
             "\"Temperature\": \"temperature.temperature\"}', '{}')", function (err) {
             if (err) throw err;
         });
-        pg_pool.query("INSERT INTO sensor__sensors VALUES ('hmc5883l', " +
+        pg_pool.query("INSERT INTO sensor__sensor_metadata VALUES ('hmc5883l', " +
             "'{\"X\": \"magnetic_field.x\", \"Y\": \"magnetic_field.y\", \"Z\": \"magnetic_field.z\"}', '{}')", function (err) {
             if (err) throw err;
         });
-        pg_pool.query("INSERT INTO sensor__sensors VALUES ('camera', " +
+        pg_pool.query("INSERT INTO sensor__sensor_metadata VALUES ('camera', " +
             "'{\"standing_water\": \"computer_vision.standing_water\", \"cloud_type\": \"computer_vision.cloud_type\", " +
             "\"traffic_density\": \"computer_vision.traffic_density\", \"num_pedestrians\": \"computer_vision.num_pedestrians\"}', '{}')", function (err) {
             if (err) throw err;
         });
     });
-    pg_pool.query("DELETE FROM sensor__features_of_interest", function (err) {
+    pg_pool.query("DELETE FROM sensor__feature_metadata", function (err) {
         if (err) throw err;
-        pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('temperature', " +
+        pg_pool.query("INSERT INTO sensor__feature_metadata VALUES ('temperature', " +
             "'[{\"name\": \"temperature\", \"type\": \"FLOAT\"}]')", function (err) {
             if (err) throw err;
         });
-        pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('relative_humidity', " +
+        pg_pool.query("INSERT INTO sensor__feature_metadata VALUES ('relative_humidity', " +
             "'[{\"name\": \"humidity\", \"type\": \"FLOAT\"}]')", function (err) {
             if (err) throw err;
         });
-        pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('magnetic_field', " +
+        pg_pool.query("INSERT INTO sensor__feature_metadata VALUES ('magnetic_field', " +
             "'[{\"name\": \"x\", \"type\": \"FLOAT\"}, " +
             "{\"name\": \"y\", \"type\": \"FLOAT\"}, " +
             "{\"name\": \"z\", \"type\": \"FLOAT\"}]')", function (err) {
             if (err) throw err;
         });
-        pg_pool.query("INSERT INTO sensor__features_of_interest VALUES ('computer_vision', " +
+        pg_pool.query("INSERT INTO sensor__feature_metadata VALUES ('computer_vision', " +
             "'[{\"name\": \"standing_water\", \"type\": \"BOOL\"}, " +
             "{\"name\": \"cloud_type\", \"type\": \"VARCHAR\"}, " +
             "{\"name\": \"traffic_density\", \"type\": \"FLOAT\"}, " +
@@ -164,10 +164,10 @@ if (process.argv[2] == 'setup') {
 else if (process.argv[2] == 'teardown') {
 
     // clear metadata tables
-    pg_pool.query("DELETE FROM sensor__sensors;", function (err) {
+    pg_pool.query("DELETE FROM sensor__sensor_metadata;", function (err) {
         if (err) throw err;
     });
-    pg_pool.query("DELETE FROM sensor__features_of_interest", function (err) {
+    pg_pool.query("DELETE FROM sensor__feature", function (err) {
         if (err) throw err;
     });
 
