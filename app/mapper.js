@@ -10,7 +10,8 @@ var log = logger().getLogger('mapper');
 // Configure the logger
 winston.level = process.env.LOG_LEVEL || "info";
 winston.remove(winston.transports.Console);
-winston.add(winston.transports.Console, {'colorize': true, 'timestamp': true})
+winston.add(winston.transports.Console, {'colorize': true, 'timestamp': true});
+winston.add(winston.transports.File, {'colorize': true, 'filename': '/var/log/mapper.log', 'timestamp': true});
 
 // Connect to the publisher
 var socket = require('socket.io-client')('http://streaming.plenar.io/', {reconnect: true, query: 'consumer_token=' + process.env.CONSUMER_TOKEN});
