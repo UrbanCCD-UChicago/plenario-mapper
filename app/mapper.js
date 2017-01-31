@@ -2,12 +2,20 @@ var pg = require('pg');
 var promise = require('promise');
 var util = require('util');
 var request = require('request');
+var winston = require('winston');
 
 var logger = require('./util/logger');
 var log = logger().getLogger('mapper');
 
-var socket = require('socket.io-client')('http://streaming.plenar.io/',
-    {reconnect: true, query: 'consumer_token=' + process.env.CONSUMER_TOKEN});
+// Configure the logger
+winston.level = process.env.LOG_LEVEL || "info";
+winston.remove(winston.transports.Console);
+winston.add(winston.transports.Console, {'colorize': true, 'timestamp': true})
+
+// Connect to the publisher
+var socket = require('socket.io-client')('http://streaming.plenar.io/', {reconnect: true, query: 'consumer_token=' + process.env.CONSUMER_TOKEN});
+socket.on('connect', function() { winston.info('Connected to the publisher.'); });
+
 var pg_config = {
     user: process.env.DB_USER,
     database: process.env.DB_NAME,
@@ -47,7 +55,7 @@ var blacklist = [];
  *            humidity: 27.48 } }
  */
 var parse_data = function (obs) {
-    log.info(obs);
+    // log.info(obs);
     // put network name, all nodes, sensors, and data keys to lower case for internal comparisons
     obs.node_id = obs.node_id.toLowerCase();
     obs.sensor = obs.sensor.toLowerCase();
@@ -63,19 +71,19 @@ var parse_data = function (obs) {
     // which would throw TypeErrors
     if (invalid_keys(obs).length > 0 || Object.keys(type_map).length == 0 ||
         (Object.keys(type_map).length > 0 && Object.keys(coerce_types(obs).errors).length > 0)) {
-        log.info('discrepancy in map');
+        // log.info('discrepancy in map');
         update_map().then(function () {
             update_type_map().then(function () {
-                log.info('map updated');
+                // log.info('map updated');
                 if (!(obs.sensor in map)) {
-                    log.info('sensor not in new map');
+                    // log.info('sensor not in new map');
                     // this means we don't have the mapping for a sensor and it's not in postgres
                     // send error message to apiary if message not already sent
                     send_error(obs.sensor, 'does_not_exist', {network: obs.network});
                     insert_emit(obs);
                 }
                 else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-                    log.info('invalid keys in new map');
+                    // log.info('invalid keys in new map');
                     // this means there is an unknown or faulty key being sent from beehive
                     // or the types of this observation cannot be correctly coerced
                     // send error message to apiary if message not already sent
@@ -88,7 +96,7 @@ var parse_data = function (obs) {
                     insert_emit(obs);
                 }
                 else {
-                    log.info('new map fixed everything');
+                    // log.info('new map fixed everything');
                     // updating the map fixed the discrepancy
                     // send resolve message if sensor in blacklist
                     send_resolve(obs.sensor);
@@ -283,6 +291,7 @@ function insert_emit(obs) {
         // emit salvageable data to socket
         var obs_list = format_obs(obs);
         for (var i = 0; i < obs_list.length; i++) {
+            // log.info('Sending: ' + obs_list[i]);
             socket.emit('internal_data', obs_list[i]);
         }
     }
@@ -308,6 +317,8 @@ function misfit_query_text(obs) {
  * @return {String} query_text
  */
 function feature_query_text(obs, feature) {
+    // log.info("---------- feature_query_text() ----------");
+    // log.info(obs);
     var query_text = util.format("INSERT INTO %s__%s (node_id, datetime, meta_id, sensor, ",
         obs.network, feature.toLowerCase());
     var c = 0;
@@ -317,7 +328,9 @@ function feature_query_text(obs, feature) {
                 query_text += ', '
             }
             var property = map[obs.sensor][key].split(/\.(.+)?/)[1];
-            query_text += property;
+            // Surrounding the column with "" is needed to specify columns with
+            // names that begin with numbers such as "500nm"
+            query_text += '"' + property + '"';
             c++;
         }
     });
@@ -340,6 +353,7 @@ function feature_query_text(obs, feature) {
         }
     });
     query_text += ');';
+    // log.info(query_text);
     return query_text
 }
 
