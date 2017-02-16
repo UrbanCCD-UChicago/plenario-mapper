@@ -81,10 +81,6 @@ var parse_data = function (obs) {
                     insert_emit(obs);
                 }
                 else {
-                    // log.info('new map fixed everything');
-                    // updating the map fixed the discrepancy
-                    // send resolve message if sensor in blacklist
-                    send_resolve(obs.sensor);
                     insert_emit(obs);
                 }
             }, function (err) {
@@ -453,24 +449,5 @@ function send_error(sensor, message_type, args) {
     }
 }
 
-/**
- * sends message to apiary communicating that updating the map from postgres resolved previous discrepancies
- *
- * @param {String} sensor = sensor name
- */
-function send_resolve(sensor) {
-    request.post('http://' + config.plenarioHost + '/apiary/send_message',
-        {
-            json: {
-                name: sensor,
-                value: "resolve"
-            }
-        }, function (err, response, body) {
-            if (err) {
-                // log.error(err);
-            }
-        });
-    blacklist.splice(blacklist.indexOf(sensor), 1)
-}
 
 module.exports.parse_data = parse_data;
