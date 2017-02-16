@@ -1,41 +1,57 @@
-var pg = require('pg');
-var promise = require('promise');
-var util = require('util');
-var request = require('request');
-var winston = require('winston');
+const config = require('../config');
+const log = require('../logger');
+const pg = require('pg');
+const promise = require('promise');
+const request = require('request');
+const url = require('url');
+const util = require('util');
 
-var logger = require('./util/logger');
-var log = logger().getLogger('mapper');
 
-// Configure the logger
-winston.level = process.env.LOG_LEVEL || "info";
-winston.remove(winston.transports.Console);
-winston.add(winston.transports.Console, {'colorize': true, 'timestamp': true});
+log.info('Loaded the mapper.');
+
 
 // Connect to the publisher
-var socket = require('socket.io-client')('http://streaming.plenar.io/', {reconnect: true, query: 'consumer_token=' + process.env.CONSUMER_TOKEN});
-socket.on('connect', function() { winston.info('Connected to the publisher.'); });
+var socket = require('socket.io-client')(config.publisherUrl, {reconnect: true, query: 'consumer_token=' + config.consumerToken});
+socket.on('connect', function() { log.info('Connected to the publisher.'); });
+
+
+// Configure the postgres connection
+var postgres_params = url.parse(config.postgresUri);
+var postgres_auth = postgres_params.auth.split(':');
 
 var pg_config = {
-    user: process.env.DB_USER,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    max: 10,
-    idleTimeoutMillis: 30000
+  user: postgres_auth[0],
+  password: postgres_auth[1],
+  host: postgres_params.hostname,
+  port: postgres_params.port,
+  database: postgres_params.pathname.split('/')[1],
+  ssl: true,
+  max: 10,
+  idleTimeoutMillis: 30000
 };
+
+
+// Configure the redshift connection
+var params = url.parse(config.redshiftUri);
+var auth = params.auth.split(':');
+
 var rs_config = {
-    user: process.env.RS_USER,
-    database: process.env.RS_NAME,
-    password: process.env.RS_PASSWORD,
-    host: process.env.RS_HOST,
-    port: process.env.RS_PORT,
-    max: 10,
-    idleTimeoutMillis: 30000
+  user: auth[0],
+  password: auth[1],
+  host: params.hostname,
+  port: params.port,
+  database: params.pathname.split('/')[1],
+  ssl: true,
+  max: 10,
+  idleTimeoutMillis: 30000
 };
+
+
+// Connect to the databases
 var rs_pool = new pg.Pool(rs_config);
 var pg_pool = new pg.Pool(pg_config);
+
+
 var map = {};
 var type_map = {};
 // array of all sensor names whose metadata appears to be incorrect
@@ -57,6 +73,7 @@ var blacklist = [];
 var parse_data = function (obs) {
     // log.info(obs);
     // put network name, all nodes, sensors, and data keys to lower case for internal comparisons
+    log.info(obs);
     obs.node_id = obs.node_id.toLowerCase();
     obs.sensor = obs.sensor.toLowerCase();
 
@@ -71,19 +88,19 @@ var parse_data = function (obs) {
     // which would throw TypeErrors
     if (invalid_keys(obs).length > 0 || Object.keys(type_map).length == 0 ||
         (Object.keys(type_map).length > 0 && Object.keys(coerce_types(obs).errors).length > 0)) {
-        log.info('discrepancy in map');
+        // log.info('discrepancy in map');
         update_map().then(function () {
             update_type_map().then(function () {
-                log.info('map updated');
+                // log.info('map updated');
                 if (!(obs.sensor in map)) {
-                    log.info('sensor not in new map');
+                    // log.info('sensor not in new map');
                     // this means we don't have the mapping for a sensor and it's not in postgres
                     // send error message to apiary if message not already sent
                     send_error(obs.sensor, 'does_not_exist', {network: obs.network});
                     insert_emit(obs);
                 }
                 else if (invalid_keys(obs).length > 0 || Object.keys(coerce_types(obs).errors).length > 0) {
-                    log.info('invalid keys in new map');
+                    // log.info('invalid keys in new map');
                     // this means there is an unknown or faulty key being sent from beehive
                     // or the types of this observation cannot be correctly coerced
                     // send error message to apiary if message not already sent
@@ -96,17 +113,17 @@ var parse_data = function (obs) {
                     insert_emit(obs);
                 }
                 else {
-                    log.info('new map fixed everything');
+                    // log.info('new map fixed everything');
                     // updating the map fixed the discrepancy
                     // send resolve message if sensor in blacklist
                     send_resolve(obs.sensor);
                     insert_emit(obs);
                 }
             }, function (err) {
-                log.error(err)
+                // log.error(err)
             })
         }, function (err) {
-            log.error(err)
+            // log.error(err)
         })
 
     }
@@ -232,10 +249,10 @@ function coerce_types(obs) {
             }
             else {
                 errors[key] = obs.data[key];
-                log.error(
-                    'unrecognized type ' + type +
-                    ' of property ' + property +
-                    ' of feature ' + feature);
+                // log.error(
+                  //   'unrecognized type ' + type +
+                    // ' of property ' + property +
+                    // ' of feature ' + feature);
             }
         }
     });
@@ -263,7 +280,7 @@ function insert_emit(obs) {
         });
         rs_pool.query(misfit_query_text(misfit_obs), function (err) {
             if (err) {
-                log.error('error inserting data into unknown_feature table ', err)
+                // log.error('error inserting data into unknown_feature table ', err)
             }
         });
         if (Object.keys(obs.data).length > 0) {
@@ -283,8 +300,8 @@ function insert_emit(obs) {
             var feature = all_features[j];
             rs_pool.query(feature_query_text(obs, feature), function (err) {
                 if (err) {
-                    log.error('error inserting data into ' +
-                        obs.network + '__' + feature.toLowerCase() + ' table ', err)
+                    // log.error('error inserting data into ' +
+                      //   obs.network + '__' + feature.toLowerCase() + ' table ', err)
                 }
             });
         }
@@ -453,7 +470,7 @@ function send_error(sensor, message_type, args) {
     }
 
     if (blacklist.indexOf(sensor) < 0) {
-        request.post('http://' + process.env.PLENARIO_HOST + '/apiary/send_message',
+        request.post('http://' + config.plenarioHost + '/apiary/send_message',
             {
                 json: {
                     name: sensor,
@@ -461,7 +478,7 @@ function send_error(sensor, message_type, args) {
                 }
             }, function (err, response, body) {
                 if (err) {
-                    log.error(err);
+                    // log.error(err);
                 }
             });
         blacklist.push(sensor)
@@ -474,7 +491,7 @@ function send_error(sensor, message_type, args) {
  * @param {String} sensor = sensor name
  */
 function send_resolve(sensor) {
-    request.post('http://' + process.env.PLENARIO_HOST + '/apiary/send_message',
+    request.post('http://' + config.plenarioHost + '/apiary/send_message',
         {
             json: {
                 name: sensor,
@@ -482,7 +499,7 @@ function send_resolve(sensor) {
             }
         }, function (err, response, body) {
             if (err) {
-                log.error(err);
+                // log.error(err);
             }
         });
     blacklist.splice(blacklist.indexOf(sensor), 1)

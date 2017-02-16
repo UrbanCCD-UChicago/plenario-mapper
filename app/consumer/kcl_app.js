@@ -5,7 +5,7 @@ global.Promise = require('promise');
 
 var util = require('util');
 var kcl = require('../');
-var logger = require('../util/logger');
+var log = require('../../logger');
 var mapper = require('../mapper');
 
 /**
@@ -14,7 +14,6 @@ var mapper = require('../mapper');
  */
 
 function recordProcessor() {
-    var log = logger().getLogger('recordProcessor');
     var shardId;
 
     return {

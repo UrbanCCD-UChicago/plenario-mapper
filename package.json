@@ -13,7 +13,7 @@
     "clean": "grunt clean",
     "release": "grunt release",
     "doc": "grunt jsdoc",
-    "start": "nodejs app/bin/kcl-bootstrap -e -p app/consumer/sample.properties",
+    "start": "nodejs app/bin/kcl-bootstrap --java /usr/bin/java -e -p app/consumer/sample.properties",
     "test": "node tests/travis_tests/test_wrapper.js"
   },
   "engines": {
