@@ -5,34 +5,23 @@
  * tear down testing with
  * $ node configure_tests.js teardown
  */
-var pg = require('pg');
-var util = require('util');
 
-var pg_config = {
-    user: process.env.DB_USER,
-    database: 'sensor_test',
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    max: 10,
-    idleTimeoutMillis: 1000
-};
-var rs_config = {
-    user: process.env.RS_USER,
-    database: 'sensor_test',
-    password: process.env.RS_PASSWORD,
-    host: process.env.RS_HOST,
-    port: process.env.RS_PORT,
-    max: 10,
-    idleTimeoutMillis: 1000
-};
-var rs_pool = new pg.Pool(rs_config);
-var pg_pool = new pg.Pool(pg_config);
+
+const database = require('../database');
+
+const pg_pool = database.postgres;
+const rs_pool = database.redshift;
+
 
 // insert test metadata into database
 if (process.argv[2] == 'setup') {
 
     // insert test data after clearing metadata tables of possible old test data
+
+    pg_pool.query("DELETE FROM sensor__sensor_to_node", function (err) {
+        if (err) throw err;
+    });
+
     pg_pool.query("DELETE FROM sensor__sensor_metadata", function (err) {
         if (err) throw err;
         pg_pool.query("INSERT INTO sensor__sensor_metadata VALUES ('htu21d', " +

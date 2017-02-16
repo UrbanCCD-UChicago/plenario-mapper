@@ -9,32 +9,14 @@
  * $ nodeunit integration_tests.js
  * $ node ../configure_tests.js teardown
  */
+const database = require('../../database');
 var rewire = require('rewire');
 var mapper = rewire('../../app/mapper');
 var _ = require('underscore');
-var pg = require('pg');
 
-// connect to 'sensor_test' databases in postgres and redshift
-var pg_config = {
-    user: process.env.DB_USER,
-    database: 'sensor_test',
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    max: 10,
-    idleTimeoutMillis: 1000
-};
-var rs_config = {
-    user: process.env.RS_USER,
-    database: 'sensor_test',
-    password: process.env.RS_PASSWORD,
-    host: process.env.RS_HOST,
-    port: process.env.RS_PORT,
-    max: 10,
-    idleTimeoutMillis: 1000
-};
-var pg_pool = new pg.Pool(pg_config);
-var rs_pool = new pg.Pool(rs_config);
+
+var pg_pool = database.postgres;
+var rs_pool = database.redshift;
 
 
 // test update_map
